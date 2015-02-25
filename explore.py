@@ -1,7 +1,7 @@
 import h5py
 import matplotlib.pyplot as plt
 
-fn = '/home/tdos/gestures/libras.hdf5'
+fn = '/home/tdos/gestures/libras_random.hdf5'
 libras_fh = h5py.File(fn,'r')
 
 try:
@@ -13,7 +13,7 @@ try:
     ax.grid(which='both')
     ax.minorticks_on()
 
-    databuff = ((x,y,cls) for cls,ds in libras_fh.iteritems() for x,y in ds)
+    databuff = ((x,y,cls) for cls,ds in libras_fh.iteritems() for x,y,idx in ds)
     timer = fig.canvas.new_timer(interval=1000)
 
     def update():
