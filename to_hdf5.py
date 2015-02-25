@@ -2,7 +2,7 @@ import numpy as np
 import h5py
 
 fn = '/home/tdos/gestures/movement_libras.data'
-dtype = [('class','|S32',),('x',np.float,(45,)),('y',np.float,(45,))]
+dtype = [('x',np.float,(45,)),('y',np.float,(45,))]
 
 classes = {1: 'curved swing',
            2: 'horizontal swing',
@@ -21,12 +21,16 @@ classes = {1: 'curved swing',
            15: 'tremble'}
 
 libras_raw = np.loadtxt(fn,delimiter=",")
-libras = np.recarray(len(libras_raw),dtype=dtype)
-libras['x'] = libras_raw[:,:-1:2]
-libras['y'] = libras_raw[:,1:-1:2]
-libras['class'] = map(lambda x: classes[int(x)], libras_raw[:,-1])
 
 
-libras_fh = h5py.File("libras.hdf5",'w')
-libras_fh.create_dataset("libras",maxshape=(None,),data=libras,chunks=True)
-libras_fh.close()
+with h5py.File("libras.hdf5",'w') as libras_fh:
+    for clsid,clsname in classes.items():
+        rows = libras_raw[libras_raw[:,-1] == clsid]
+
+        libras = np.recarray(len(rows),dtype=dtype)
+        libras['x'] = rows[:,:-1:2]
+        libras['y'] = rows[:,1:-1:2]
+
+        libras_fh.create_dataset(clsname,maxshape=(None,),data=libras,chunks=True)
+
+        del libras

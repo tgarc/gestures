@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 
 fn = '/home/tdos/gestures/libras.hdf5'
 libras_fh = h5py.File(fn,'r')
-libras = libras_fh['libras'].value
 
 try:
     fig = plt.figure()
@@ -14,7 +13,7 @@ try:
     ax.grid(which='both')
     ax.minorticks_on()
 
-    databuff = iter(libras[['x','y','class']])
+    databuff = ((x,y,cls) for cls,ds in libras_fh.iteritems() for x,y in ds)
     timer = fig.canvas.new_timer(interval=1000)
 
     def update():
@@ -36,7 +35,8 @@ try:
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
     timer.add_callback(update)
 
-    update()        #draw first frame
+    # draw first frame then start
+    update()        
     timer.start()
 
     plt.show()
