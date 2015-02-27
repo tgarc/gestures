@@ -1,4 +1,5 @@
 import h5py
+import numpy as np
 
 libras_fh = h5py.File('/home/tdos/gestures/libras.hdf5','r')
 rlibras_fh = h5py.File('/home/tdos/gestures/libras_random.hdf5','w')
@@ -40,5 +41,3 @@ try:
 finally:
     libras_fh.close()
     rlibras_fh.close()
-
-    

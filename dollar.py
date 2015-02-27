@@ -9,7 +9,7 @@ def translate(x,y):
     return x_c,y_c
 
 def rotate(x,y):
-    theta = np.arctan2(y,x)
+    theta = np.arctan2(y[0],x[0])
     x_r = x*np.cos(theta)-y*np.sin(theta)
     y_r = x*np.sin(theta)+y*np.cos(theta)
 

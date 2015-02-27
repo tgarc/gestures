@@ -1,6 +1,6 @@
 import h5py
 import numpy as np
-import classifier as c
+import dollar
 
 libras_fh = h5py.File('/home/tdos/gestures/libras_random.hdf5','r')
 tlibras_fh = h5py.File('/home/tdos/gestures/libras_templates.hdf5','w')
@@ -11,10 +11,10 @@ try:
         template = np.zeros(1,dtype=dtype)
 
         for sample in ds:
-            x,y = c.resample(sample['x'],sample['y'])
-            x,y = c.rotate(x,y)
-            x,y = c.translate(x,y)
-            x,y = c.scale(x,y)
+            x,y = dollar.resample(sample['x'],sample['y'])
+            x,y = dollar.rotate(x,y)
+            x,y = dollar.translate(x,y)
+            x,y = dollar.scale(x,y)
             template['x'] += x
             template['y'] += y
         template['x'] /= len(ds)
