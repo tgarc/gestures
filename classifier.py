@@ -35,7 +35,6 @@ def query(x,y,templates):
     dists = []
     x,y = preprocess(x,y)
     for clsid,ds in templates.iteritems():
-        dists.append((compare(x,y,ds['x'][0],ds['y'][0]),clsid))
+        dists.append((compare(x,y,ds['x'],ds['y']),clsid))
 
     return sorted(dists,key=lambda x: x[0])
-    
