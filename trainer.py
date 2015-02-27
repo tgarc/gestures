@@ -1,9 +1,10 @@
 import h5py
 import numpy as np
 import dollar
+import os
 
-libras_fh = h5py.File('/home/tdos/gestures/libras_random.hdf5','r')
-tlibras_fh = h5py.File('/home/tdos/gestures/libras_templates.hdf5','w')
+libras_fh = h5py.File(os.environ.get('DATASET','libras_random.hdf5'),'r')
+tlibras_fh = h5py.File(os.environ.get('TEMPLATES','libras_templates.hdf5'),'w')
 dtype = [('x',np.float,(45,)),('y',np.float,(45,))]
 
 try:

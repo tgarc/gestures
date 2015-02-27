@@ -1,7 +1,7 @@
 import h5py
 import matplotlib.pyplot as plt
 
-fn = '/home/tdos/gestures/libras.hdf5'
+fn = 'libras.hdf5'
 libras_fh = h5py.File(fn,'r')
 
 try:

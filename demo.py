@@ -1,9 +1,10 @@
 import h5py
 import matplotlib.pyplot as plt
 import dollar
+import os
 
-libras_fh = h5py.File('/home/tdos/gestures/libras_random.hdf5','r')
-templates_fh = h5py.File('/home/tdos/gestures/libras_templates.hdf5','r')
+libras_fh = h5py.File(os.environ.get('DATASET','libras_random.hdf5'),'r')
+templates_fh = h5py.File(os.environ.get('TEMPLATES','libras_templates.hdf5'),'r')
 
 NSAMPLES = sum(len(ds) for ds in libras_fh['test'].itervalues())
 try:
@@ -31,6 +32,9 @@ try:
         x,y,c = databuff[CNT]
 
         scores, matches = zip(*dollar.query(x,y,templates_fh))
+
+        print
+        for m,s in zip(matches,scores): print "'%s': %f" % (m,s)
 
         for ax in axes.values(): ax.cla()
 

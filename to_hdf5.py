@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 
-fn = '/home/tdos/gestures/movement_libras.data'
+fn = 'movement_libras.data'
 dtype = [('x',np.float,(45,)),('y',np.float,(45,))]
 
 classes = {1: 'curved swing',
