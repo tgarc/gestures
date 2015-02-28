@@ -1,23 +1,26 @@
+"""
+A variation of the $1 gesture recognition algorithm:
+
+http://depts.washington.edu/aimgroup/proj/dollar/
+"""
 import numpy as np
 from scipy.constants import golden
 
-def translate(x,y):
-    """ translate point set so that its centroid is at the origin """
-    # x_c = ds['x']-np.mean(ds['x'],axis=1).reshape(-1,1)
-    # y_c = ds['y']-np.mean(ds['y'],axis=1).reshape(-1,1)
-    x_c = x-np.mean(x)
-    y_c = y-np.mean(y)
-    
-    return x_c,y_c
-
-def rotate(x,y,theta):
+def rotate(x,y,theta,x_c=None,y_c=None):
     """ rotate to indicative angle """
-    x_r = x*np.cos(theta)-y*np.sin(theta)
-    y_r = x*np.sin(theta)+y*np.cos(theta)
+    if x_c is None: x_c = np.mean(x)
+    if y_c is None: y_c = np.mean(y)
+
+    x_r = (x-x_c)*np.cos(theta)-(y-y_c)*np.sin(theta) + x_c
+    y_r = (x-x_c)*np.sin(theta)+(y-y_c)*np.cos(theta) + y_c
 
     return x_r, y_r
 
-def scale(x,y):
+def scale(x,y):#,size):
+    # w = max(x)-min(x)
+    # h = max(y)-min(y)
+    # x *=size/w
+    # y *=size/h
     return x,y
 
 def resample(x,y):    
@@ -45,26 +48,33 @@ def goldensearch(f,a,b,tol=1e-6):
 
     return (xu+xl)/2.
 
-def compare(x,y,tmp):
+def compare(x,y,tmp,phi_a,phi_b,tol):
     def f(phi): x_r,y_r = rotate(x,y,phi); return path_dist(x_r,y_r,tmp['x'],tmp['y'])
-    theta_hat = goldensearch(f,-np.pi/4,np.pi/4,tol=np.pi/90)
-    x_r,y_r = rotate(x,y,theta_hat)
 
-    return path_dist(x_r,y_r,tmp['x'],tmp['y']), theta_hat
+    theta_hat = goldensearch(f,phi_a,phi_b,tol)
+
+    return f(theta_hat), theta_hat
 
 def preprocess(x,y):
     # must be done in order: resample,translate,rotate,scale
     x,y = resample(x,y)
-    x,y = translate(x,y)
-    x,y = rotate(x,y,np.arctan2(y[0],x[0]))
+
+    x_c = np.mean(x)
+    y_c = np.mean(y)
+    # theta = np.arctan2(y_c-y[0],x_c-x[0])
+    # x,y = rotate(x,y,theta,x_c,y_c)
     x,y = scale(x,y)
+
+    x -= x_c
+    y -= y_c
+
     return x,y
 
-def query(x,y,templates):
+def query(x,y,templates,phi_a=-np.pi/6,phi_b=np.pi/6,tol=np.pi/90):
     dists = []
     x,y = preprocess(x,y)
     for clsid,ds in templates.iteritems():
-        d, theta = compare(x,y,ds)
+        d, theta = compare(x,y,ds,phi_a,phi_b,tol=tol)
         score = 1-2*d/np.sqrt(2)
         dists.append((score,theta,clsid))
 

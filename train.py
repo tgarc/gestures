@@ -12,10 +12,7 @@ try:
         template = np.zeros(1,dtype=dtype)
 
         for sample in ds:
-            x,y = dollar.resample(sample['x'],sample['y'])
-            x,y = dollar.rotate(x,y)
-            x,y = dollar.translate(x,y)
-            x,y = dollar.scale(x,y)
+            x,y = dollar.preprocess(sample['x'],sample['y'])
             template['x'] += x
             template['y'] += y
         template['x'] /= len(ds)

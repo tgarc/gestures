@@ -1,8 +1,10 @@
+"""
+Interactively plots each of the samples from the dataset
+"""
 import h5py
 import matplotlib.pyplot as plt
 
-fn = 'libras.hdf5'
-libras_fh = h5py.File(fn,'r')
+libras_fh = h5py.File('libras.hdf5','r')
 
 try:
     fig = plt.figure()

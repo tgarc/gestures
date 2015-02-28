@@ -41,20 +41,17 @@ try:
 
         axes['query'].plot(x,y,'-o')
         axes['query'].set_title("Test sample from class '%s'" % c)
+
         x,y = dollar.preprocess(x,y)
         axes['transform'].plot(x,y,'-o')
         axes['transform'].set_title("Transformed query")
+
         for i in range(3):
             ds = templates_fh[matches[i]][0]
             x_r,y_r = dollar.rotate(x,y,thetas[i])
             axes['match_'+str(i)].plot(ds['x'],ds['y'],'-o',color='b')
             axes['match_'+str(i)].plot(x_r,y_r,'-o',color='g')
             axes['match_'+str(i)].set_title("'%s' (%.2f)" % (matches[i],scores[i]))
-        
-        # ax.draw_artist(line)
-        # fig.draw_artist(txt)
-        # fig.canvas.blit(ax.bbox)
-        # fig.canvas.blit(txt)
         
         fig.canvas.draw()
 
