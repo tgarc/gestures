@@ -45,9 +45,7 @@ try:
         nextg = cv2.cvtColor(next,cv2.COLOR_BGR2GRAY)
 
         moving = (cv2.absdiff(prevg,nextg) > T) & (cv2.absdiff(currg,nextg) > T)
-        # cv2.medianBlur(moving.view(np.uint8),3,dst=moving.view(np.uint8))
-        cv2.erode(moving.view(np.uint8),krn,dst=moving.view(np.uint8))
-        cv2.dilate(moving.view(np.uint8),krn,dst=moving.view(np.uint8))
+        cv2.medianBlur(moving.view(np.uint8),3,dst=moving.view(np.uint8))
 
         # estimate centroid and bounding box
         area = np.sum(moving)
