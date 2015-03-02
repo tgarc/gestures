@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from framebuffer import FrameBuffer
+import sys
 
 
 fig = plt.figure()
@@ -18,8 +20,9 @@ get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 
 alpha = 0.75
 T0 = 35
+
+cap = FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1)
 try:
-    cap = cv2.VideoCapture(-1)
     prev = cap.read()[1]
     curr = cap.read()[1]
 
@@ -33,8 +36,8 @@ try:
     axes['moving'].imshow(bkgnd,cmap=mpl.cm.get_cmap('gray'))
     axes['thresh'].imshow(bkgnd,cmap=mpl.cm.get_cmap('gray'))
 
-    while plt.pause(1e-6) is None:
-        next = cap.read()[1]
+    valid, next = cap.read()
+    while plt.pause(1e-6) is None and valid:
         nextg = cv2.cvtColor(next,cv2.COLOR_BGR2GRAY)
 
         moving = (cv2.absdiff(prevg,nextg) > T) & (cv2.absdiff(currg,nextg) > T)
@@ -61,8 +64,9 @@ try:
 
         prev, prevg = curr, currg
         curr, currg = next, nextg
+        valid, next = cap.read()
 except KeyboardInterrupt:
     pass
 finally:
     plt.close(fig)
-    cap.release()
+    cap.close()
