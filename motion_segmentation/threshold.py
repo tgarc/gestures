@@ -2,9 +2,11 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from framebuffer import FrameBuffer
+import framebuffer as fb
 import sys
 
+alpha = 0.75
+T0 = 35
 
 fig = plt.figure()
 axes = {}
@@ -18,10 +20,8 @@ fig.tight_layout()
 
 get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 
-alpha = 0.75
-T0 = 35
-
-cap = FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1)
+fb.VERBOSE = 1
+cap = fb.FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1, *map(int,sys.argv[2:]))
 try:
     prev = cap.read()[1]
     curr = cap.read()[1]
