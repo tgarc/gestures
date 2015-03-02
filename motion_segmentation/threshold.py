@@ -5,8 +5,9 @@ import matplotlib as mpl
 import framebuffer as fb
 import sys
 
-alpha = 0.75
-T0 = 35
+
+alpha = 0.5
+T0 = 10
 
 fig = plt.figure()
 axes = {}
@@ -37,19 +38,32 @@ try:
     axes['thresh'].imshow(bkgnd,cmap=mpl.cm.get_cmap('gray'))
 
     valid, next = cap.read()
+    krn = np.ones((3,3),dtype=np.uint8)
+    rownums = np.arange(currg.shape[0],dtype=int).reshape(-1,1)
+    colnums = np.arange(currg.shape[1],dtype=int).reshape(1,-1)
     while plt.pause(1e-6) is None and valid:
         nextg = cv2.cvtColor(next,cv2.COLOR_BGR2GRAY)
 
         moving = (cv2.absdiff(prevg,nextg) > T) & (cv2.absdiff(currg,nextg) > T)
+        # cv2.medianBlur(moving.view(np.uint8),3,dst=moving.view(np.uint8))
+        cv2.erode(moving.view(np.uint8),krn,dst=moving.view(np.uint8))
+        cv2.dilate(moving.view(np.uint8),krn,dst=moving.view(np.uint8))
 
-        # cimg = cv2.cvtColor(curr,cv2.COLOR_BGR2YCR_CB)
-        # y,cb,cr = cimg[:,:,0], cimg[:,:,1], cimg[:,:,2]
-        # y[(y <= 10) | (y >= 20)]    = 0
-        # cb[(cb <= 10) | (cb >= 20)] = 0
-        # cr[(cr <= 10) | (cr < 20)]  = 0
-        # cv2.cvtColor(cimg,cv2.COLOR_YCR_CB2RGB,dst=cimg)
+        # estimate centroid and bounding box
+        area = np.sum(moving)
+        dispimg = next.copy()
+        if area > 10:
+            mov_cols = moving*colnums
+            mov_rows = moving*rownums
+            x = np.sum(mov_cols) / area
+            y = np.sum(mov_rows) / area
+            x0,x1 = np.min(mov_cols[moving]), np.max(mov_cols[moving])
+            y0,y1 = np.min(mov_rows[moving]), np.max(mov_rows[moving])
 
-        get_imdisp(axes['raw']).set_data(next[:,:,::-1])
+            cv2.circle(dispimg,(x,y),5,color=(0,255,0),thickness=-1)
+            cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
+
+        get_imdisp(axes['raw']).set_data(dispimg[:,:,::-1])
         get_imdisp(axes['bkgnd']).set_data(bkgnd)
         get_imdisp(axes['moving']).set_data(moving*255)
         get_imdisp(axes['thresh']).set_data(T)
@@ -58,6 +72,7 @@ try:
         # Updating threshold depends on current background model
         # so always update this before updating background
         T[~moving] = alpha*T[~moving] + (1-alpha)*5*cv2.absdiff(nextg,bkgnd)[~moving]
+        T[T<T0] = T0
         # T[moving] = T[moving]
         bkgnd[~moving] = alpha*bkgnd[~moving] + (1-alpha)*nextg[~moving]
         bkgnd[moving] = nextg[moving]
