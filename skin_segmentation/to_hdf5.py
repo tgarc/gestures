@@ -2,7 +2,7 @@ import numpy as np
 import h5py
 
 fn = 'Skin_NonSkin.txt'
-dtype = [('b',np.int),('g',np.int),('r',np.int)]
+dtype = [('b',np.uint8),('g',np.uint8),('r',np.uint8)]
 
 classes = {1: 'skin',
            2: 'non-skin'}
