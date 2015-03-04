@@ -18,8 +18,8 @@ fig.tight_layout()
 try:
     data = np.zeros((len(data_fh['skin']),2),dtype=float)
     Y = 0.299*data_fh['skin']['r'] + 0.587*data_fh['skin']['g'] + 0.114*data_fh['skin']['b']
-    data[:,0] = np.around(data_fh['skin']['r']-Y+128)
-    data[:,1] = np.around(data_fh['skin']['b']-Y+128)
+    data[:,0] = data_fh['skin']['r']-Y+128
+    data[:,1] = data_fh['skin']['b']-Y+128
 
     H, xedges, yedges = np.histogram2d(data[:,0], data[:,1],bins=np.arange(0,256))
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
