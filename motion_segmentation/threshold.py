@@ -1,9 +1,11 @@
+import sys,os
+sys.path.insert(0, os.path.abspath('../'))
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import framebuffer as fb
-import sys
 
 
 alpha = 0.5

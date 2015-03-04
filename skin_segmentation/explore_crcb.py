@@ -14,22 +14,23 @@ axes['raw'] = fig.add_subplot(111)
 for k,ax in axes.items(): ax.set_title(k)
 fig.tight_layout()
 
-colorspace = np.zeros((255,255),dtype=np.uint8)
-
-get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 try:
-    data = np.ndarray((len(data_fh['skin']),3),dtype=np.uint8)
-    data[:,0] = data_fh['skin']['b']
-    data[:,1] = data_fh['skin']['g']
-    data[:,2] = data_fh['skin']['r']
-    data = data.reshape(5651,9,3) # factor samples into arbitrary 2d shape
-    cimg = cv2.cvtColor(data,cv2.COLOR_BGR2YCR_CB).reshape(50859,3)
+    data = np.zeros((len(data_fh['skin']),2),dtype=int)
+    Y = 0.299*data_fh['skin']['r'] + 0.587*data_fh['skin']['g'] + 0.114*data_fh['skin']['b']
+    data[:,0] = np.around(data_fh['skin']['r']-Y+128)
+    data[:,1] = np.around(data_fh['skin']['b']-Y+128)
 
-    heatmap, xedges, yedges = np.histogram2d(cimg[:,1], cimg[:,2], bins=255)
+    heatmap, xedges, yedges = np.histogram2d(data[:,0], data[:,1],bins=np.arange(0,256))
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-    axes['raw'].imshow(heatmap)
+    imdisp = axes['raw'].imshow(heatmap,extent=extent,interpolation='nearest')
+    axes['raw'].set_xlabel('Cr')
+    axes['raw'].set_ylabel('Cb')
+
+    cbar = fig.colorbar(imdisp)
+
     plt.show()
 except KeyboardInterrupt:
     pass
 finally:
     plt.close(fig)
+    data_fh.close()
