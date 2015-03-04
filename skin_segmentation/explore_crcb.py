@@ -3,9 +3,10 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from sys import argv
 
 
-data_fh = h5py.File('bhatt.hdf5','r')
+data_fh = h5py.File(argv[1],'r')
 
 fig = plt.figure()
 axes = {}
@@ -15,7 +16,7 @@ for k,ax in axes.items(): ax.set_title(k)
 fig.tight_layout()
 
 try:
-    data = np.zeros((len(data_fh['skin']),2),dtype=int)
+    data = np.zeros((len(data_fh['skin']),2),dtype=float)
     Y = 0.299*data_fh['skin']['r'] + 0.587*data_fh['skin']['g'] + 0.114*data_fh['skin']['b']
     data[:,0] = np.around(data_fh['skin']['r']-Y+128)
     data[:,1] = np.around(data_fh['skin']['b']-Y+128)
