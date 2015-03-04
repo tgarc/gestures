@@ -20,13 +20,16 @@ try:
     data[:,0] = np.around(data_fh['skin']['r']-Y+128)
     data[:,1] = np.around(data_fh['skin']['b']-Y+128)
 
-    heatmap, xedges, yedges = np.histogram2d(data[:,0], data[:,1],bins=np.arange(0,256))
+    H, xedges, yedges = np.histogram2d(data[:,0], data[:,1],bins=np.arange(0,256))
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-    imdisp = axes['raw'].imshow(heatmap,extent=extent,interpolation='nearest')
+    H = np.rot90(H)
+    H = np.flipud(H)
+
+    mesh = axes['raw'].pcolormesh(xedges,yedges,np.ma.masked_where(H==0,H))
     axes['raw'].set_xlabel('Cr')
     axes['raw'].set_ylabel('Cb')
 
-    cbar = fig.colorbar(imdisp)
+    cbar = fig.colorbar(mesh)
 
     plt.show()
 except KeyboardInterrupt:
