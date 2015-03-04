@@ -3,6 +3,9 @@ import numpy as np
 VERBOSE = 0
 
 class FrameBuffer(object):
+    """
+    Class for handling video files/streams generically through opencv's video captures class
+    """
     def __init__(self,src,stop=None,start=None):
         if start is not None: start, stop = stop, start
         self.cap = cv2.VideoCapture(src)
