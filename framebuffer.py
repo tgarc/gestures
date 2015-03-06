@@ -15,32 +15,55 @@ class FrameBufferBase(object):
     def close(self):
         raise NotImplementedError
 
+    @abstractmethod        
+    def reset(self):
+        raise NotImplementedError        
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        img = self.read()
+        if img.size: return img
+        self.reset()
+        raise StopIteration
+
+
 class VideoBuffer(FrameBufferBase):
-    def __init__(self,src,start=None,stop=None):
+    def __init__(self,src,start=None,stop=None,**kwargs):
         self.start = start
         self.stop = stop
 
-        self.__buff = cv2.VideoCapture(src)
+        self.__buff = cv2.VideoCapture(src,**kwargs)
 
         if isinstance(src,basestring):
             if self.start is None:
                 self.start = int(self.__buff.get(cv2.CAP_PROP_POS_FRAMES))
             if self.stop is None:
-                self.stop = int(self.__buff.get(cv2.CAP_PROP_FRAME_COUNT)+self.__buff.get(cv2.CAP_PROP_POS_FRAMES))
+                self.stop = int(self.__buff.get(cv2.CAP_PROP_FRAME_COUNT)
+                                +self.__buff.get(cv2.CAP_PROP_POS_FRAMES))
             self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
         else:
             self.start = 0
             self.stop = -1
 
-        self._idx = self.start-1
+        self._idx = self.start
+
+    def reset(self):
+        self._idx = self.start
+        self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
+
+    # allow user to indirectly access opencv VideoCapture object attributes
+    def __getattr__(self,attr):
+        return getattr(self.__buff, attr)
 
     def read(self):
-        self._idx += 1
         if self._idx == self.stop:
             return np.array([])
 
         valid, img = self.__buff.read()
-        if valid:
+        if valid and img is not None:
+            self._idx += 1
             return img
         return np.array([])
 
@@ -49,26 +72,36 @@ class VideoBuffer(FrameBufferBase):
 
 
 class ImageBuffer(FrameBufferBase):
-    def __init__(self,src,start=None,stop=None):
+    def __init__(self,src,start=None,stop=None,**kwargs):
         self.start = start
         self.stop = stop
+        self.kwargs = dict(**kwargs)
 
-        self.__buff = (cv2.imread(fn,**kwargs) for fn in list(src)[start:stop])
+        self.__buff = list(src)
+        if self.stop is None: self.stop = len(self.__buff)
+        if self.start is None: self.start = 0
+        self._idx = self.start
+
+    def reset(self):
+        self._idx = self.start
 
     def read(self):
-        try:
-            return self.__buff.next()
-        except StopIteration:
+        if self._idx == self.stop:
             return np.array([])
 
+        img = cv2.imread(self.__buff[self._idx],**self.kwargs)
+        self._idx += 1
+        return img
+            
     def close(self):
         None
 
         
 class FrameBuffer(object):
-    def __init__(self,src,stop=None,start=None):
+    def __init__(self,src,stop=None,start=None,**kwargs):
         """
-        Class for handling video files/streams generically through opencv's video captures class
+        Class for handling images, video files, and cameras generically through
+        opencv
         """
         if start is not None: start, stop = stop, start
 
@@ -76,17 +109,28 @@ class FrameBuffer(object):
             buff = ImageBuffer
         else:
             buff = VideoBuffer
-        self.__cap = buff(src,start,stop)
+        self.__cap = buff(src,start,stop,**kwargs)
 
         if VERBOSE:
             print "Opened %r (range=(%s,%s))" % (self.__cap,self.start,self.stop)
-        
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        return self.__cap.next()
+            
     def __getattr__(self,attr):
         return getattr(self.__cap, attr)
 
+    def __repr__(self):
+        return self.__cap.__repr__()
+
+    def __str__(self):
+        return self.__cap.__str__()
+        
     def __enter__(self):
         return self
 
     def __exit__(self):
         self.close()
-
