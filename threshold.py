@@ -68,14 +68,18 @@ try:
             x0,x1 = np.min(mov_cols[mask]), np.max(mov_cols[mask])
             y0,y1 = np.min(mov_rows[mask]), np.max(mov_rows[mask])
 
-            cv2.circle(dispimg,(x,y),5,color=(0,255,0),thickness=-1)
-            cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
-
             cimg = cv2.cvtColor(curr[y0:y1+1,x0:x1+1,:],cv2.COLOR_BGR2YCR_CB)
             cr,cb = cimg[:,:,1], cimg[:,:,2]
-            skinmask = (77 <= cb)&(cb <= 127)
-            skinmask &= (133 <= cr)&(cr <= 173)
+            skinmask = (60 <= cb)&(cb <= 90)
+            skinmask &= (165 <= cr)&(cr <= 195)
+            # skinmask = (77 <= cb)&(cb <= 127)
+            # skinmask &= (133 <= cr)&(cr <= 173)
             mask[y0:y1+1,x0:x1+1] = skinmask
+
+            x0,x1 = np.min(mov_cols[mask]), np.max(mov_cols[mask])
+            y0,y1 = np.min(mov_rows[mask]), np.max(mov_rows[mask])
+            cv2.circle(dispimg,(x,y),5,color=(0,255,0),thickness=-1)
+            cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
 
         # draw
         get_imdisp(axes['raw']).set_data(dispimg[:,:,::-1])
