@@ -1,15 +1,10 @@
 import cv2
 import numpy as np
-from abc import ABCMeta, abstractmethod, abstractproperty
-VERBOSE = 0
+from abc import ABCMeta, abstractmethod
 
 
 class FrameBufferBase(object):
     __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def type(self):
-        raise NotImplementedError
 
     @abstractmethod
     def read(self):
@@ -29,7 +24,6 @@ class FrameBufferBase(object):
     def next(self):
         img = self.read()
         if img.size: return img
-        self.reset()
         raise StopIteration
 
 
@@ -49,12 +43,12 @@ class VideoBuffer(FrameBufferBase):
             self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
         else:
             self.start = 0
-            self.stop = -1
+            self.stop = -2
 
-        self._idx = self.start
+        self._idx = self.start-1
 
     def reset(self):
-        self._idx = self.start
+        self._idx = self.start-1
         self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
 
     # allow user to indirectly access opencv VideoCapture object attributes
@@ -84,10 +78,10 @@ class ImageBuffer(FrameBufferBase):
         self.__buff = list(src)
         if self.stop is None: self.stop = len(self.__buff)
         if self.start is None: self.start = 0
-        self._idx = self.start
+        self._idx = self.start-1
 
     def reset(self):
-        self._idx = self.start
+        self._idx = self.start-1
 
     def read(self):
         if self._idx == self.stop:
@@ -111,18 +105,12 @@ class FrameBuffer(object):
 
         if hasattr(src,'__iter__'):
             buff = ImageBuffer
-            self.source = 'image'
         elif isinstance(src,basestring):
             buff = VideoBuffer
-            self.source = 'video'
         else:
             buff = VideoBuffer
-            self.source = 'camera'            
-
         self.__cap = buff(src,start,stop,**kwargs)
-
-        if VERBOSE:
-            print "Opened %r (range=(%s,%s))" % (self.__cap,self.start,self.stop)
+        self.source = self.__cap
 
     def __iter__(self):
         return self

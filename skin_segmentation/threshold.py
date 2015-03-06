@@ -7,6 +7,19 @@ import matplotlib as mpl
 import framebuffer as fb
 import cv2
 
+# Do some command line parsing
+# ------------------------------
+from glob import glob
+if len(sys.argv)>1:
+    try:
+        args = [int(sys.argv[1])]
+    except ValueError:
+        args = glob(sys.argv[1])
+    if len(args) == 1: args = args[0]
+else:
+    args = -1
+# ------------------------------
+
 fig = plt.figure()
 axes = {}
 axes['raw'] = fig.add_subplot(211)
@@ -17,14 +30,13 @@ fig.tight_layout()
 
 get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 
-fb.VERBOSE = 1
-cap = fb.FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1, *map(int,sys.argv[2:]))
+cap = fb.FrameBuffer(args, *map(int,sys.argv[2:]))
 try:
-    valid, curr = cap.read()
+    curr = cap.read()
     axes['raw'].imshow(curr)
     axes['skin'].imshow(curr)
 
-    while plt.pause(1e-6) is None and valid:
+    for curr in cap:
         cimg = cv2.cvtColor(curr,cv2.COLOR_BGR2YCR_CB)
         y,cr,cb = cimg[:,:,0], cimg[:,:,1], cimg[:,:,2]
         mask = (60 <= cb)&(cb <= 90)
@@ -37,7 +49,8 @@ try:
         get_imdisp(axes['skin']).set_data(dispimg[:,:,::-1])
         for ax in axes.values(): fig.canvas.blit(ax.bbox)
 
-        valid, curr = cap.read()
+        plt.pause(1 if isinstance(cap.source,fb.ImageBuffer) else 1e-6)
+
 except KeyboardInterrupt:
     pass
 finally:
