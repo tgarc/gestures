@@ -45,7 +45,15 @@ class VideoBuffer(FrameBufferBase):
             self.start = 0
             self.stop = -2
 
-        self._idx = self.start-1
+        self._idx = self.start
+
+    def reset(self):
+        self._idx = self.start
+        self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
+
+    # allow user to indirectly access opencv VideoCapture object attributes
+    def __getattr__(self,attr):
+        return getattr(self.__buff, attr)
 
     def reset(self):
         self._idx = self.start-1
