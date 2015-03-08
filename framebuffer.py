@@ -55,20 +55,12 @@ class VideoBuffer(FrameBufferBase):
     def __getattr__(self,attr):
         return getattr(self.__buff, attr)
 
-    def reset(self):
-        self._idx = self.start-1
-        self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
-
-    # allow user to indirectly access opencv VideoCapture object attributes
-    def __getattr__(self,attr):
-        return getattr(self.__buff, attr)
-
     def read(self):
         if self._idx == self.stop:
             return np.array([])
 
         valid, img = self.__buff.read()
-        if valid and img is not None:
+        if valid:
             self._idx += 1
             return img
         return np.array([])
@@ -86,10 +78,10 @@ class ImageBuffer(FrameBufferBase):
         self.__buff = list(src)
         if self.stop is None: self.stop = len(self.__buff)
         if self.start is None: self.start = 0
-        self._idx = self.start-1
+        self._idx = self.start
 
     def reset(self):
-        self._idx = self.start-1
+        self._idx = self.start
 
     def read(self):
         if self._idx == self.stop:
@@ -139,4 +131,4 @@ class FrameBuffer(object):
         return self
 
     def __exit__(self):
-        self.close()
+        self.__cap.close()
