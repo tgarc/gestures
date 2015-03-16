@@ -35,8 +35,8 @@ try:
     imgq_g = [cv2.cvtColor(imgq[0],cv2.COLOR_BGR2GRAY)]*3
     imshape = imgq_g[0].shape
     waypts = []
-    blobthresh_hi = 100
-    blobthresh_lo = 80
+    blobthresh_hi = 120
+    blobthresh_lo = 100
 
     T = np.ones_like(imgq_g[0])*T0
     bkgnd = imgq_g[0].copy()
@@ -52,7 +52,7 @@ try:
     rownums = np.arange(imshape[0],dtype=int)
     colnums = np.arange(imshape[1],dtype=int)
     track_bbox = 0,0,imshape[0],imshape[1]
-    while plt.pause(1e-6) is None and imgq[-1].size:
+    while plt.pause(1e-3) is None and imgq[-1].size:
         imgq_g[-1] = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2GRAY)
         dispimg = imgq[-1].copy()
         
@@ -68,14 +68,22 @@ try:
 
         movearea = np.sum(moving)
         if tracking and movearea > blobthresh_lo:
+            # Calculate bbox of moving pixels
+            mov_cols = moving*colnums.reshape(1,-1)
+            mov_rows = moving*rownums.reshape(-1,1)
+            x0,x1 = np.min(mov_cols[moving]), np.max(mov_cols[moving])+1
+            y0,y1 = np.min(mov_rows[moving]), np.max(mov_rows[moving])+1
+            movereg = np.zeros_like(moving)
+            movereg[y0:y1,x0:x1] = True
+
             bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
-            # bkproject &= moving
+            bkproject &= movereg
             ret, track_bbox = cv2.meanShift(bkproject,track_bbox,term_crit)
             x,y,w,h = track_bbox
             cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
             waypts.append((x+w/2,y+h/2))
 
-            print (x,y,w,h)
+            print "Skin Tracking:",x,y,w,h
             for p0,p1 in zip(waypts[:-1],waypts[1:]):
                 cv2.circle(dispimg, p0, 5, (255,0,0),thickness=-1)
                 cv2.line(dispimg, inttuple(p0), inttuple(p1), (255,0,0), 1)
@@ -90,28 +98,33 @@ try:
             x0,x1 = np.min(mov_cols[moving]), np.max(mov_cols[moving])+1
             y0,y1 = np.min(mov_rows[moving]), np.max(mov_rows[moving])+1
             cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,255,0),thickness=2)
-
-            roi = img_crcb[y0:y1,x0:x1]
+            print "Moving:", (x0+x1)//2, (y0+y1)//2, x1-x0, y1-y0
+            
+            crcb_roi = img_crcb[y0:y1,x0:x1]
             skin_roi = skin[y0:y1,x0:x1]
-            if np.sum(skin_roi) > (roi.size//10):
+            if np.sum(skin_roi) > (crcb_roi.size//10):
                 tracking = True
+                movereg = np.zeros_like(moving)
+                movereg[y0:y1,x0:x1] = True
 
                 # Estimate hand centroid as the centroid of skin colored pixels
                 # inside the bbox of detected movement
-                mov_cols = skin_roi*colnums[x0:x1].reshape(1,-1)
-                mov_rows = skin_roi*rownums[y0:y1].reshape(-1,1)
-                x0,x1 = np.min(mov_cols[skin_roi]), np.max(mov_cols[skin_roi])+1
-                y0,y1 = np.min(mov_rows[skin_roi]), np.max(mov_rows[skin_roi])+1
-
+                skin_cols = skin_roi*colnums[x0:x1].reshape(1,-1)
+                skin_rows = skin_roi*rownums[y0:y1].reshape(-1,1)
+                x0,x1 = np.min(skin_cols[skin_roi]), np.max(skin_cols[skin_roi])+1
+                y0,y1 = np.min(skin_rows[skin_roi]), np.max(skin_rows[skin_roi])+1
+                
                 # Use the skin bbox/centroid to initiate tracking
-                hist = cv2.calcHist([roi], chans, skin_roi.view(np.uint8), hSize, ranges)
+                hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), hSize, ranges)
                 cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
                 bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
+                bkproject &= movereg
+                
                 ret, track_bbox = cv2.meanShift(bkproject,(x0,y0,x1-x0,y1-y0),term_crit)
                 x,y,w,h = track_bbox
                 waypts.append((x+w/2,y+h/2))
                 cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
-                print (x,y,w,h)
+                print "Skin Tracking:",x,y,w,h
 
         # draw
         get_imdisp(axes['raw']).set_data(dispimg[:,:,::-1])
@@ -127,8 +140,9 @@ try:
         # Updating threshold depends on current background model
         # so always update this before updating background
         T[~moving] = alpha*T[~moving] + (1-alpha)*5*cv2.absdiff(imgq_g[-1],bkgnd)[~moving]
-        T[T<T0] = T0
         # T[moving] = T[moving]
+        T[T<T0] = T0
+
         bkgnd[~moving] = alpha*bkgnd[~moving] + (1-alpha)*imgq_g[-1][~moving]
         bkgnd[moving] = imgq_g[-1][moving]
 
