@@ -67,12 +67,15 @@ try:
         # skin &= (165 <= cr)&(cr <= 195)
 
         movearea = np.sum(moving)
-        if tracking and movearea > blobthresh_lo:
+        if movearea:
             # Calculate bbox of moving pixels
             mov_cols = moving*colnums.reshape(1,-1)
             mov_rows = moving*rownums.reshape(-1,1)
             x0,x1 = np.min(mov_cols[moving]), np.max(mov_cols[moving])+1
             y0,y1 = np.min(mov_rows[moving]), np.max(mov_rows[moving])+1
+            movearea = (x1-x0)*(y1-y0)
+
+        if tracking and movearea > blobthresh_lo:
             movereg = np.zeros_like(moving)
             movereg[y0:y1,x0:x1] = True
 
@@ -92,11 +95,6 @@ try:
             waypts = []
             track_bbox = 0,0,imshape[0],imshape[1]
         elif movearea > blobthresh_hi:
-            # Calculate bbox of moving pixels
-            mov_cols = moving*colnums.reshape(1,-1)
-            mov_rows = moving*rownums.reshape(-1,1)
-            x0,x1 = np.min(mov_cols[moving]), np.max(mov_cols[moving])+1
-            y0,y1 = np.min(mov_rows[moving]), np.max(mov_rows[moving])+1
             cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,255,0),thickness=2)
             print "Moving:", (x0+x1)//2, (y0+y1)//2, x1-x0, y1-y0
             
