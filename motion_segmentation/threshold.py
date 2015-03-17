@@ -26,8 +26,8 @@ get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 fb.VERBOSE = 1
 cap = fb.FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1, *map(int,sys.argv[2:]))
 try:
-    prev = cap.read()[1]
-    curr = cap.read()[1]
+    prev = cap.read()
+    curr = cap.read()
 
     prevg = cv2.cvtColor(prev,cv2.COLOR_BGR2GRAY)
     currg = cv2.cvtColor(curr,cv2.COLOR_BGR2GRAY)
@@ -39,11 +39,11 @@ try:
     axes['moving'].imshow(bkgnd,cmap=mpl.cm.get_cmap('gray'))
     axes['thresh'].imshow(bkgnd,cmap=mpl.cm.get_cmap('gray'))
 
-    valid, next = cap.read()
+    next = cap.read()
     krn = np.ones((3,3),dtype=np.uint8)
     rownums = np.arange(currg.shape[0],dtype=int).reshape(-1,1)
     colnums = np.arange(currg.shape[1],dtype=int).reshape(1,-1)
-    while plt.pause(1e-6) is None and valid:
+    while plt.pause(1e-6) is None and next.size:
         nextg = cv2.cvtColor(next,cv2.COLOR_BGR2GRAY)
 
         moving = (cv2.absdiff(prevg,nextg) > T) & (cv2.absdiff(currg,nextg) > T)
@@ -79,7 +79,7 @@ try:
 
         prev, prevg = curr, currg
         curr, currg = next, nextg
-        valid, next = cap.read()
+        next = cap.read()
 except KeyboardInterrupt:
     pass
 finally:
