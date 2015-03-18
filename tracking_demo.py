@@ -13,7 +13,7 @@ T0 = 30
 term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 chans = [1,2]
 ranges = [0, 256, 0, 256]
-hSize = [32,32]
+nbins = [16,16]
 
 fig = plt.figure(dpi=100)
 axes = {}
@@ -55,7 +55,6 @@ try:
     t_loop=time.time()
     rownums = np.arange(imshape[0],dtype=int)
     colnums = np.arange(imshape[1],dtype=int)
-    track_bbox = 0,0,imshape[0],imshape[1]
     while imgq[-1].size:
         imgq_g[-1] = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2GRAY)
         dispimg = imgq[-1].copy()
@@ -65,10 +64,10 @@ try:
 
         img_crcb = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2YCR_CB)
         cr,cb = img_crcb[:,:,1], img_crcb[:,:,2]
-        skin = (77 <= cb)&(cb <= 127)
-        skin &= (133 <= cr)&(cr <= 173)
-        # skin = (60 <= cb)&(cb <= 90)
-        # skin &= (165 <= cr)&(cr <= 195)
+        # skin = (77 <= cb)&(cb <= 127)
+        # skin &= (133 <= cr)&(cr <= 173)
+        skin = (60 <= cb)&(cb <= 90)
+        skin &= (165 <= cr)&(cr <= 195)
 
         movearea = np.sum(moving)
         if movearea:
@@ -85,7 +84,9 @@ try:
             movereg[y0:y1,x0:x1] = True
             bkproject &= movereg
 
-            ret, track_bbox = cv2.meanShift(bkproject,track_bbox,term_crit)
+            # notice we're using the track_bbox from last iteration
+            # for the intitial estimate
+            niter, track_bbox = cv2.meanShift(bkproject,track_bbox,term_crit)
             x,y,w,h = track_bbox
             cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
             waypts.append((x+w/2,y+h/2))
@@ -94,7 +95,6 @@ try:
         elif tracking:
             tracking = False
             waypts = []
-            track_bbox = 0,0,imshape[0],imshape[1]
             axes['draw'].lines[0].remove()
         elif movearea > blobthresh_hi:
             cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,255,0),thickness=2)
@@ -111,21 +111,20 @@ try:
                 skin_rows = skin_roi*rownums[y0:y1].reshape(-1,1)
                 x0,x1 = np.min(skin_cols[skin_roi]), np.max(skin_cols[skin_roi])+1
                 y0,y1 = np.min(skin_rows[skin_roi]), np.max(skin_rows[skin_roi])+1
+
+                # Use the hand centroid estimate as our initial estimate for
+                # tracking
+                x,y,w,h = (x0,y0,x1-x0,y1-y0)
+                track_bbox = x,y,w,h
+                waypts.append((x+w/2,y+h/2))
                 
                 # Use the skin bbox/centroid to initiate tracking
-                hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), hSize, ranges)
+                hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), nbins, ranges)
+                # Normalize to 1 to get the sample PDF
                 cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
-                bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
 
-                movereg = np.zeros_like(moving)
-                movereg[y0:y1,x0:x1] = True
-                bkproject &= movereg
-                
-                ret, track_bbox = cv2.meanShift(bkproject,(x0,y0,x1-x0,y1-y0),term_crit)
-                x,y,w,h = track_bbox
-                waypts.append((x+w/2,y+h/2))
-                cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
                 print "Skin Tracking:",x,y,w,h
+                cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
                 line = plt.Line2D((x,),(y,),marker='o',color='b')
                 axes['draw'].add_line(line)
 
@@ -150,9 +149,11 @@ try:
         # shift buffer left        
         imgq[:-1] = imgq[1:] 
         imgq_g[:-1] = imgq_g[1:]
+
         t = time.time()-t_loop
         while t < 0.0667: t = time.time()-t_loop
-        print 1/t
+        print round(1/t,2)
+
         imgq[-1] = cap.read()
         t_loop = time.time()
 
