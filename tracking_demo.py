@@ -8,8 +8,12 @@ import time
 from common import *
 
 
+mpl.use("TkAgg")
+
+
 alpha = 0.5
 T0 = 30
+
 term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 chans = [1,2]
 ranges = [0, 256, 0, 256]
@@ -35,8 +39,10 @@ try:
     imgq_g = [cv2.cvtColor(imgq[0],cv2.COLOR_BGR2GRAY)]*3
     imshape = imgq_g[0].shape
     waypts = []
-    blobthresh_hi = imgq_g[0].size//10
-    blobthresh_lo = 100
+    MAXLEN = min(imshape)//4
+    blobthresh_hi = MAXLEN*MAXLEN
+    blobthresh_lo = 4*blobthresh_hi//5
+    T_move = 120
 
     T = np.ones_like(imgq_g[0])*T0
     bkgnd = imgq_g[0].copy()
@@ -51,6 +57,12 @@ try:
     fig.canvas.draw()
     blankcanvas = fig.canvas.copy_from_bbox(axes['draw'].bbox)
 
+    draw_state = 0
+    def onclick(event):
+        global draw_state
+        draw_state = (draw_state+1)%3
+    cid = fig.canvas.mpl_connect('button_press_event', onclick)
+
     tracking=False
     t_loop=time.time()
     rownums = np.arange(imshape[0],dtype=int)
@@ -64,21 +76,37 @@ try:
 
         img_crcb = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2YCR_CB)
         cr,cb = img_crcb[:,:,1], img_crcb[:,:,2]
-        # skin = (77 <= cb)&(cb <= 127)
-        # skin &= (133 <= cr)&(cr <= 173)
-        skin = (60 <= cb)&(cb <= 90)
-        skin &= (165 <= cr)&(cr <= 195)
+        skin = (77 <= cb)&(cb <= 127)
+        skin &= (133 <= cr)&(cr <= 173)
+        # skin = (60 <= cb)&(cb <= 90)
+        # skin &= (165 <= cr)&(cr <= 195)
 
-        movearea = np.sum(moving)
+        # draw
+        if draw_state == 0:
+            dispimg = dispimg
+            axes['draw'].set_title('raw')            
+        elif draw_state == 1:
+            skinimg = imgq[-1].copy()
+            skinimg[~skin] = 0
+            dispimg = skinimg
+            axes['draw'].set_title('skin')
+        elif draw_state == 2:
+            moveimg = imgq[-1].copy()
+            moveimg[~moving] = 0
+            dispimg = moveimg
+            axes['draw'].set_title('motion')            
+
+        movesum = movearea = np.sum(moving)
         if movearea:
             # Calculate bbox of moving pixels
+            movesum = movearea
             mov_cols = moving*colnums.reshape(1,-1)
             mov_rows = moving*rownums.reshape(-1,1)
             x0,x1 = np.min(mov_cols[moving]), np.max(mov_cols[moving])+1
             y0,y1 = np.min(mov_rows[moving]), np.max(mov_rows[moving])+1
             movearea = (x1-x0)*(y1-y0)
 
-        if tracking and movearea > blobthresh_lo and np.sum(moving)>120:
+        if tracking and movearea > blobthresh_lo and movesum > T_move:
             bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
             movereg = np.zeros_like(moving)
             movereg[y0:y1,x0:x1] = True
@@ -115,6 +143,12 @@ try:
                 # Use the hand centroid estimate as our initial estimate for
                 # tracking
                 x,y,w,h = (x0,y0,x1-x0,y1-y0)
+                if w > MAXLEN:
+                    x = x+w/2-MAXLEN//2
+                    w = MAXLEN
+                if h > MAXLEN:
+                    y = y+h/2-MAXLEN//2
+                    h = MAXLEN
                 track_bbox = x,y,w,h
                 waypts.append((x+w/2,y+h/2))
                 
@@ -128,7 +162,6 @@ try:
                 line = plt.Line2D((x,),(y,),marker='o',color='b')
                 axes['draw'].add_line(line)
 
-        # draw
         get_imdisp(axes['raw']).set_data(dispimg[:,:,::-1])
         axes['raw'].draw_artist(get_imdisp(axes['raw']))
         if waypts:
@@ -156,6 +189,7 @@ try:
 
         imgq[-1] = cap.read()
         t_loop = time.time()
+        fig.canvas.get_tk_widget().update()
 
 except KeyboardInterrupt:
     pass
