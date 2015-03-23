@@ -56,14 +56,12 @@ try:
     fig.tight_layout()
     fig.show()
     blankcanvas = fig.canvas.copy_from_bbox(axes['draw'].bbox)
-    # blanktitle = fig.canvas.copy_from_bbox(axes['raw'].title.get_window_extent())
 
     draw_state = 0
     def onclick(event):
         global draw_state
         draw_state = (draw_state+1)%4
 
-        # fig.canvas.restore_region(blanktitle)
         if draw_state == 0:
             axes['raw'].title.set_text('raw')
         elif draw_state == 1:
@@ -73,9 +71,6 @@ try:
         elif draw_state == 3:
             axes['raw'].title.set_text('backproject')
         fig.canvas.draw()
-        # axes['raw'].draw_artist(axes['raw'].title)
-        # fig.canvas.blit(axes['raw'].title.get_window_extent())
-        # fig.canvas.blit(axes['raw'].bbox.union([axes['raw'].title.get_window_extent()]))
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
     tracking=False
