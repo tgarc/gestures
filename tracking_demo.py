@@ -26,12 +26,10 @@ axes = {}
 figshape = (1,2)
 axes['raw'] = plt.subplot2grid(figshape, (0, 0))
 axes['draw'] = plt.subplot2grid(figshape, (0, 1))
-
-for k,ax in axes.items():
-    ax.set_title(k)
-    if k == 'draw': continue
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
+axes['raw'].set_title('raw')
+axes['draw'].set_title('-')
+axes['draw'].set_xticklabels([])
+axes['draw'].set_yticklabels([])
 
 get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 
@@ -57,28 +55,27 @@ try:
     fig.set_size_inches((figshape[0]*imshape[0]/100., figshape[1]*imshape[1]/100.))
     fig.tight_layout()
     fig.show()
-    fig.canvas.draw()
-    ttl = axes['raw'].set_title('')
-    ttl.set_text('raw')
     blankcanvas = fig.canvas.copy_from_bbox(axes['draw'].bbox)
+    # blanktitle = fig.canvas.copy_from_bbox(axes['raw'].title.get_window_extent())
 
     draw_state = 0
     def onclick(event):
         global draw_state
         draw_state = (draw_state+1)%4
 
+        # fig.canvas.restore_region(blanktitle)
         if draw_state == 0:
-            ttl.set_text('raw')
+            axes['raw'].title.set_text('raw')
         elif draw_state == 1:
-            ttl.set_text('skin')
+            axes['raw'].title.set_text('skin')
         elif draw_state == 2:
-            ttl.set_text('motion')            
+            axes['raw'].title.set_text('motion')            
         elif draw_state == 3:
-            ttl.set_text('backproject')
-
-        axes['raw'].draw_artist(ttl)
-        fig.canvas.blit(ttl.get_window_extent())
-
+            axes['raw'].title.set_text('backproject')
+        fig.canvas.draw()
+        # axes['raw'].draw_artist(axes['raw'].title)
+        # fig.canvas.blit(axes['raw'].title.get_window_extent())
+        # fig.canvas.blit(axes['raw'].bbox.union([axes['raw'].title.get_window_extent()]))
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
 
     tracking=False
@@ -96,10 +93,10 @@ try:
 
         img_crcb = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2YCR_CB)
         cr,cb = img_crcb[:,:,1], img_crcb[:,:,2]
-        # skin = (77 <= cb)&(cb <= 127)
-        # skin &= (133 <= cr)&(cr <= 173)
-        skin = (60 <= cb)&(cb <= 90)
-        skin &= (165 <= cr)&(cr <= 195)
+        skin = (77 <= cb)&(cb <= 127)
+        skin &= (133 <= cr)&(cr <= 173)
+        # skin = (60 <= cb)&(cb <= 90)
+        # skin &= (165 <= cr)&(cr <= 195)
         cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
         cv2.dilate(skin.view(np.uint8),krn,dst=skin.view(np.uint8),iterations=2)
         cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
@@ -186,8 +183,8 @@ try:
                 # vertical, this should correspond to the length from the palm
                 # to tip of fingers
                 h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
-                w = min(2*min((x1-xcom,xcom-x0)),MAXLEN)                
-                # w = min(x1-x0,MAXLEN)
+                # w = min(2*min((x1-xcom,xcom-x0)),MAXLEN)
+                w = min(x1-x0,MAXLEN)
                 # h,w = y1-y0,x1-x0
                 # track_bbox = xcom-w//2,ycom-w//2,w,h
                 track_bbox = xcom-w//2,ycom-h//2,w,h                
@@ -201,15 +198,14 @@ try:
                 print "Skin Tracking:",xcom,ycom,w,h
                 cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
                 cv2.circle(dispimg,(xcom,ycom),5,(0,255,0),thickness=-1)
-                line = plt.Line2D((xcom,),(ycom,),marker='o',color='b')
-                axes['draw'].add_line(line)
+                axes['draw'].add_line(plt.Line2D((),(),marker='o',color='b'))
 
         get_imdisp(axes['raw']).set_data(dispimg[:,:,::-1])
         axes['raw'].draw_artist(get_imdisp(axes['raw']))
         if waypts:
             fig.canvas.restore_region(blankcanvas)
-            axes['draw'].draw_artist(axes['draw'].lines[0])
             axes['draw'].lines[0].set_data(zip(*waypts))
+            axes['draw'].draw_artist(axes['draw'].lines[0])
         for ax in axes.values():
             fig.canvas.blit(ax.bbox)
 
