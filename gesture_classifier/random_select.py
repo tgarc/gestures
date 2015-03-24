@@ -1,6 +1,10 @@
+'''
+Create a test and training dataset by selecting randomly from each gesture class
+'''
 import h5py
 import numpy as np
 import os
+import numpy.random as npr
 
 libras_fh = h5py.File('libras.hdf5','r')
 rlibras_fh = h5py.File(os.environ.get('DATASET','libras_random.hdf5'),'w')
@@ -8,10 +12,7 @@ rlibras_fh = h5py.File(os.environ.get('DATASET','libras_random.hdf5'),'w')
 rlibras_fh.create_group('test')
 rlibras_fh.create_group('train')
 
-# Select a random subset of each class
-import numpy.random as npr
-
-samplesize=8
+trainsize=8
 try:
     for clsid in libras_fh:
         dtype = libras_fh[clsid].dtype.descr+[('index',np.int_,)]
@@ -19,10 +20,10 @@ try:
         # Create random training data
         ridx = np.arange(len(libras_fh[clsid]))
         npr.shuffle(ridx)
-        ridx = ridx[:samplesize]
+        ridx = ridx[:trainsize]
         data = np.take(libras_fh[clsid],ridx)
 
-        train = np.recarray(samplesize,dtype=dtype)
+        train = np.recarray(trainsize,dtype=dtype)
         train['x'] = data['x']
         train['y'] = data['y']
         train['index'] = ridx
@@ -32,7 +33,7 @@ try:
         ridx = list(set(np.arange(len(libras_fh[clsid]))).difference(ridx))
         data = np.take(libras_fh[clsid],ridx)
 
-        test = np.recarray(len(libras_fh[clsid])-samplesize,dtype=dtype)
+        test = np.recarray(len(libras_fh[clsid])-trainsize,dtype=dtype)
         test['x'] = data['x']
         test['y'] = data['y']
         test['index'] = ridx

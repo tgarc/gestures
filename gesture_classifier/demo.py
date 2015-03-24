@@ -9,7 +9,9 @@ templates_fh = h5py.File(os.environ.get('TEMPLATES','libras_templates.hdf5'),'r'
 
 NSAMPLES = sum(len(ds) for ds in libras_fh['test'].itervalues())
 try:
-    CNT = 0
+    CNT   = 0
+    scale = 250
+    N     = 64
 
     fig = plt.figure()
     axes = {}
@@ -21,28 +23,25 @@ try:
     fig.tight_layout()
 
     for ax in axes.values():
-        # line = plt.Line2D((),(),marker='o',markerfacecolor='k')
-        # ax.add_artist(line)
         ax.grid(which='both')
         ax.minorticks_on()
 
     databuff = [(x,y,cls) for cls,ds in libras_fh['test'].iteritems() for x,y,idx in ds]
 
     def update():
-        global CNT
         x,y,c = databuff[CNT]
 
-        scores, thetas, matches = zip(*dollar.query(x,y,templates_fh))
-
+        scores, thetas, matches = zip(*dollar.query(x,y,scale,N,templates_fh))
         print
-        for m,r,s in zip(matches,thetas,scores): print "'%s': %f (%f)" % (m,s,r*180/np.pi)
+        for m,r,s in zip(matches,thetas,scores):
+            print "'%s': %f (%f)" % (m,s,r*180/np.pi)
 
         for ax in axes.values(): ax.cla()
 
         axes['query'].plot(x,y,'-o')
         axes['query'].set_title("Test sample from class '%s'" % c)
 
-        x,y = dollar.preprocess(x,y)
+        x,y = dollar.preprocess(x,y,scale,N)
         axes['transform'].plot(x,y,'-o')
         axes['transform'].set_title("Transformed query")
 
