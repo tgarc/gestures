@@ -79,14 +79,14 @@ def compare(x,y,tmp,phi_a,phi_b,tol):
     return f(theta_hat), theta_hat
 
 def preprocess(x,y,size,N):
-    x_c = np.mean(x)
-    y_c = np.mean(y)
-
     # must be done in order: resample,rotate,scale,translate
     x,y = resample(x,y,N)
     # theta = np.arctan2(y_c-y[0],x_c-x[0])
     # x,y = rotate(x,y,theta,x_c,y_c)
     x,y = scale(x,y,size)
+
+    x_c = np.mean(x)
+    y_c = np.mean(y)
     x -= x_c
     y -= y_c
 

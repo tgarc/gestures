@@ -10,7 +10,7 @@ templates_fh = h5py.File(os.environ.get('TEMPLATES','libras_templates.hdf5'),'r'
 NSAMPLES = sum(len(ds) for ds in libras_fh['test'].itervalues())
 try:
     CNT   = 0
-    scale = 1
+    scale = 250
     N     = 64
 
     fig = plt.figure()
