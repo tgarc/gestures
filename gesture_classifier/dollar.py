@@ -97,7 +97,7 @@ def query(x,y,size,N,templates,phi_a=-np.pi/6,phi_b=np.pi/6,tol=np.pi/90):
     x,y = preprocess(x,y,size,N)
     for clsid,ds in templates.iteritems():
         d, theta = compare(x,y,ds,phi_a,phi_b,tol=tol)
-        score = 1-2*d/np.sqrt(2)
+        score = 1-2*d/(size*np.sqrt(2))
         dists.append((score,theta,clsid))
 
     return sorted(dists,key=lambda x: x[0],reverse=True)

@@ -165,7 +165,7 @@ try:
                 axes['match'].add_line(plt.Line2D(ds['x'],ds['y'],marker='x',color='g'))
                 axes['match'].add_line(plt.Line2D(x,y,marker='o',color='b'))
                 for l in axes['match'].lines: axes['match'].draw_artist(l)
-                axes['match'].set_title(clsid)
+                axes['match'].set_title("%s (score: %.2f)" % (clsid,score))
                 fig.canvas.draw() # only way I know how to update text regions
 
                 print "Class: %s (%.2f)" % (clsid,score)
