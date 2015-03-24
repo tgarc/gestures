@@ -21,8 +21,6 @@ classes = {1: 'curved swing',
            15: 'tremble'}
 
 libras_raw = np.loadtxt(fn,delimiter=",")
-
-
 with h5py.File("libras.hdf5",'w') as libras_fh:
     for clsid,clsname in classes.items():
         rows = libras_raw[libras_raw[:,-1] == clsid]

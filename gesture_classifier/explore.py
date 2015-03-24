@@ -22,12 +22,6 @@ try:
         x,y,c = databuff.next()
         line.set_data(x,y)
         txt.set_text("Class '%s'" % c)
-
-        # ax.draw_artist(line)
-        # fig.draw_artist(txt)
-        # fig.canvas.blit(ax.bbox)
-        # fig.canvas.blit(txt)
-        
         fig.canvas.draw()
 
     def onclick(event):
