@@ -10,15 +10,13 @@ import time
 from itertools import cycle
 from common import *
 import threading
+from config import alpha, T0, scale, samplesize
 
 
 mpl.use("TkAgg")
 
 STATELEN = 5
 STATECYCLE = cycle(('wait','search','track'))
-
-alpha = 0.5
-T0 = 30
 
 term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 chans = [1,2]
@@ -41,7 +39,7 @@ axes['match'].grid(which='both')
 
 get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 
-templates_fh = h5py.File('gesture_classifier/libras_templates.hdf5','r')
+templates_fh = h5py.File('data/templates.hdf5','r')
 cap = fb.FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1, *map(int,sys.argv[2:]))
 try:
     imgq = [cap.read()]*3
@@ -138,76 +136,10 @@ try:
             dispimg = cv2.cvtColor(bkproject*255,cv2.COLOR_GRAY2BGR)
             
         if state == 'wait':
-            if statecnt == 0:
-                if len(waypts) > 10:
-                    # Find best gesture match
-                    x,y = zip(*waypts)
-                    matches = dollar.query(x,y,250,64,templates_fh)
-                    score,theta,clsid = matches[0]
-
-                    ds = templates_fh[clsid][0]
-                    x,y = dollar.preprocess(x,y,250,64)
-
-                    # clean up last match
-                    figlock.acquire()
-                    del axes['match'].lines[:]
-                    fig.canvas.restore_region(bg_cache[axes['match']])
-
-                    # Show preprocessed gesture and closest matching template
-                    axes['match'].add_line(plt.Line2D(ds['x'],ds['y'],marker='x',color='g'))
-                    axes['match'].add_line(plt.Line2D(x,y,marker='o',color='b'))
-
-                    for l in axes['match'].lines: axes['match'].draw_artist(l)
-
-                    axes['match'].set_title("%s (score: %.2f)" % (clsid,score))
-
-                    fig.canvas.draw() # only way I know how to update text regions
-                    figlock.release()
-
-                    print "Class: %s (%.2f)" % (clsid,score)
-                    print "Npoints:", len(waypts)
-                # remove this gesture from the drawing board
-                waypts = []
             CountState()
         elif state == 'track':
             x0,y0,x1,y1 = move_roi
-            if statecnt == 0:
-                CountState() # Make initial hand centroid estimate
-
-                # Estimate hand centroid as the centroid of skin colored pixels
-                # inside the bbox of detected movement
-                crcb_roi = img_crcb[y0:y1,x0:x1]
-                skin_roi = skin[y0:y1,x0:x1]
-                (x0,y0,x1,y1),(xcom,ycom) = findBBoxCoM(skin,(x0,y0,x1,y1))
-                waypts.append((xcom,ycom))
-
-                # Use the hand centroid estimate as our initial estimate for
-                # tracking
-                # Estimate the hand's bounding box by taking the minimum
-                # vertical length to where the skin ends. If the hand is
-                # vertical, this should correspond to the length from the palm
-                # to tip of fingers
-                h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
-                w = min(x1-x0,MAXLEN)
-                track_bbox = xcom-w//2,ycom-h//2,w,h                
-
-                # Use the skin bbox/centroid to initiate tracking
-                hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), nbins, ranges)
-                # Normalize to 1 to get the sample PDF
-                cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
-
-                print "Skin Tracking:",xcom,ycom,w,h
-                cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
-                cv2.circle(dispimg,(xcom,ycom),5,(0,255,0),thickness=-1)
-
-                # Add this gesture to the drawing board
-                figlock.acquire()
-                del axes['draw'].lines[:]
-                fig.canvas.restore_region(bg_cache[axes['draw']])
-                axes['draw'].add_line(plt.Line2D((),(),marker='o',color='b'))
-                fig.canvas.draw()
-                figlock.release()
-            elif movearea > blobthresh_lo and movesum > T_move:
+            if movearea > blobthresh_lo and movesum > T_move:
                 bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
                 movereg = np.zeros_like(moving)
                 movereg[y0:y1,x0:x1] = True
@@ -230,15 +162,79 @@ try:
                 print "Skin Tracking:",x0,y0,x1,y1
             else:
                 CountState() # Tracking failed this frame
+                if statecnt == 0 and len(waypts) > 10:
+                    # Find best gesture match
+                    x,y = zip(*waypts)
+                    matches = dollar.query(x,y,scale,samplesize,templates_fh)
+                    score,theta,clsid = matches[0]
+
+                    ds = templates_fh[clsid][0]
+                    x,y = dollar.preprocess(x,y,250,64)
+
+                    # draw best match
+                    figlock.acquire()
+
+                    # clean up last match
+                    del axes['match'].lines[:]
+                    fig.canvas.restore_region(bg_cache[axes['match']])
+
+                    # Show preprocessed gesture and closest matching template
+                    axes['match'].add_line(plt.Line2D(ds['x'],ds['y'],marker='x',color='g'))
+                    axes['match'].add_line(plt.Line2D(x,y,marker='o',color='b'))
+                    for l in axes['match'].lines: axes['match'].draw_artist(l)
+                    axes['match'].set_title("%s (score: %.2f)" % (clsid,score))
+
+                    fig.canvas.draw() # only way I know how to update text regions
+                    figlock.release()
+
+                    print "Class: %s (%.2f)" % (clsid,score)
+                    print "Npoints:", len(waypts)
+                if statecnt == 0:
+                    # remove this gesture from the drawing board
+                    waypts = []
         elif state == 'search':
             if movearea > blobthresh_hi:
-                # Gesture candidate detected
+                # Gesture candidate detected. Check that proportion of skin to
+                # area of movement bbox is high enough
                 x0,y0,x1,y1 = move_roi
-
-                # check that proportion of skin to are of movement bbox is high
-                # enough
                 if np.sum(skin[y0:y1,x0:x1]) > ((y1-y0)*(x1-x0)//16):
                     CountState()    # Increase trust for gesture candidate
+                    if statecnt == 0:
+                        # Estimate hand centroid as the centroid of skin colored pixels
+                        # inside the bbox of detected movement
+                        (x0,y0,x1,y1),(xcom,ycom) = findBBoxCoM(skin,(x0,y0,x1,y1))
+                        waypts.append((xcom,ycom))
+
+                        # Use the hand centroid estimate as our initial estimate for
+                        # tracking
+                        # Estimate the hand's bounding box by taking the minimum
+                        # vertical length to where the skin ends. If the hand is
+                        # vertical, this should correspond to the length from the palm
+                        # to tip of fingers
+                        h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
+                        w = min(x1-x0,MAXLEN)
+                        track_bbox = xcom-w//2,ycom-h//2,w,h                
+
+                        # Use the skin bbox/centroid to initiate tracking
+                        crcb_roi = img_crcb[y0:y1,x0:x1]
+                        skin_roi = skin[y0:y1,x0:x1]
+                        hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), nbins, ranges)
+                        # Normalize to 1 to get the sample PDF
+                        cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
+
+                        print "Skin Tracking:",xcom,ycom,w,h
+                        cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
+                        cv2.circle(dispimg,(xcom,ycom),5,(0,255,0),thickness=-1)
+
+                        # Add this gesture to the drawing board
+                        figlock.acquire()
+
+                        del axes['draw'].lines[:]
+                        fig.canvas.restore_region(bg_cache[axes['draw']])
+                        axes['draw'].add_line(plt.Line2D((),(),marker='o',color='b'))
+                        fig.canvas.draw()
+                        figlock.release()
+
 
         # wait for drawing to finish
         figlock.acquire()

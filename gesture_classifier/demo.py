@@ -2,16 +2,18 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import dollar
-import os
+import os,sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),'../')))
+import config as cfg
 
-libras_fh = h5py.File(os.environ.get('DATASET','libras_random.hdf5'),'r')
-templates_fh = h5py.File(os.environ.get('TEMPLATES','libras_templates.hdf5'),'r')
+libras_fh = h5py.File(os.path.join(os.path.dirname(__file__),'libras_random.hdf5'),'r')
+templates_fh = h5py.File(os.path.join(os.path.dirname(__file__),'libras_templates.hdf5'),'r')
 
 NSAMPLES = sum(len(ds) for ds in libras_fh['test'].itervalues())
 try:
     CNT   = 0
-    scale = 250
-    N     = 64
+    scale = cfg.scale
+    N     = cfg.samplesize
 
     fig = plt.figure()
     axes = {}

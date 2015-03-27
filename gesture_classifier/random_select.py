@@ -7,7 +7,7 @@ import os
 import numpy.random as npr
 
 libras_fh = h5py.File('libras.hdf5','r')
-rlibras_fh = h5py.File(os.environ.get('DATASET','libras_random.hdf5'),'w')
+rlibras_fh = h5py.File('libras_random.hdf5','w')
 
 rlibras_fh.create_group('test')
 rlibras_fh.create_group('train')

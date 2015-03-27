@@ -1,13 +1,15 @@
 import h5py
 import numpy as np
 import dollar
-import os
+import os,sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),'../')))
+import config as cfg
 
-libras_fh = h5py.File(os.environ.get('DATASET','libras_random.hdf5'),'r')
-tlibras_fh = h5py.File(os.environ.get('TEMPLATES','libras_templates.hdf5'),'w')
+libras_fh = h5py.File(os.path.join(os.path.dirname(__file__),'libras_random.hdf5'),'r')
+tlibras_fh = h5py.File(os.path.join(os.path.dirname(__file__),'libras_templates.hdf5'),'w')
 
-N = 64      # resampling size
-scale = 250 # scaling size
+N = cfg.samplesize      # resampling size
+scale = cfg.scale # scaling size
 dtype = [('x',np.float,(N,)),('y',np.float,(N,))]
 try:
     for clsid,ds in libras_fh['train'].iteritems():
