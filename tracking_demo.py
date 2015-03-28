@@ -15,7 +15,7 @@ import signal
 
 mpl.use("TkAgg")
 
-STATELEN = 5
+STATELEN = 3
 STATECYCLE = cycle(('wait','search','track'))
 
 krn = np.ones((3,3),dtype=np.uint8)
@@ -31,9 +31,9 @@ imgq_g = [cv2.cvtColor(imgq[0],cv2.COLOR_BGR2GRAY)]*3
 imshape = imgq_g[0].shape
 
 MAXLEN = min(imshape)//2
-blobthresh_hi = (min(imshape)//4)**2
+blobthresh_hi = (min(imshape)//8)**2
 blobthresh_lo = 3*blobthresh_hi//4
-T_move = 150#np.pi*min(imshape)//2
+T_move = 0#np.pi*min(imshape)//2
 
 state = STATECYCLE.next()
 statecnt = 0
@@ -65,28 +65,25 @@ while imgq[-1].size:
     imgq_g[-1] = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2GRAY)
     dispimg = imgq[-1].copy()
 
-    # motion detection
-    moving = (cv2.absdiff(imgq_g[0],imgq_g[-1]) > T) & (cv2.absdiff(imgq_g[1],imgq_g[-1]) > T)
-    movesum = movearea = np.sum(moving)
-    if movearea:
-        movesum = movearea
-        move_roi, move_com = cmn.findBBoxCoM(moving)
-        x0,y0,x1,y1 = move_roi
-        movearea = (x1-x0)*(y1-y0)
-
-        print "Moving:", (x0+x1)//2, (y0+y1)//2, x1-x0, y1-y0
-        cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,255,0),thickness=2)
-
     # skin segementation
     img_crcb = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2YCR_CB)
     cr,cb = img_crcb[:,:,1], img_crcb[:,:,2]
-    skin = (77 <= cb)&(cb <= 127)
-    skin &= (133 <= cr)&(cr <= 173)
-    # skin = (60 <= cb)&(cb <= 90)
-    # skin &= (165 <= cr)&(cr <= 195)
+    # skin = (77 <= cb)&(cb <= 127)
+    # skin &= (133 <= cr)&(cr <= 173)
+    skin = (60 <= cb)&(cb <= 90)
+    skin &= (165 <= cr)&(cr <= 195)
     cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
     cv2.dilate(skin.view(np.uint8),krn,dst=skin.view(np.uint8),iterations=2)
     cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
+
+    # motion detection
+    moving = (cv2.absdiff(imgq_g[0],imgq_g[-1]) > T) & (cv2.absdiff(imgq_g[1],imgq_g[-1]) > T)
+    if np.sum(moving):
+        move_roi, move_com = cmn.findBBoxCoM(moving)
+        x0,y0,x1,y1 = move_roi
+        print "Moving:", (x0+x1)//2, (y0+y1)//2, x1-x0, y1-y0
+    else:
+        move_roi = 0,0,0,0
 
     # set up the image to display
     if gui.draw_state == 0:
@@ -98,12 +95,14 @@ while imgq[-1].size:
         dispimg[~moving] = 0
     elif gui.draw_state == 3:
         dispimg = cv2.cvtColor(bkproject*255,cv2.COLOR_GRAY2BGR)
+    if np.sum(moving):
+        cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,255,0),thickness=2)
 
     if state == 'wait':
         CountState()
     elif state == 'track':
         x0,y0,x1,y1 = move_roi
-        if movearea > blobthresh_lo and movesum > T_move:
+        if np.sum(skin[y0:y1,x0:x1]) > blobthresh_lo:
             bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
             movereg = np.zeros_like(moving)
             movereg[y0:y1,x0:x1] = True
@@ -115,9 +114,9 @@ while imgq[-1].size:
             x,y,w,h = track_bbox
             x0,y0,x1,y1 = x,y,x+w,y+h
 
-            xcom,ycom = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1]
-            # xcom = (x0+x1)/2
-            # ycom = (y0+y1)/2
+            # xcom,ycom = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1]
+            xcom = (x0+x1)/2
+            ycom = (y0+y1)/2
 
             cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
             cv2.circle(dispimg,(xcom,ycom),5,(0,255,0),thickness=-1)
@@ -125,61 +124,60 @@ while imgq[-1].size:
 
             print "Skin Tracking:",x0,y0,x1,y1
         else:
-            CountState(STATELEN) # Tracking failed this frame
-            if len(waypts) > 10:
-                # Find best gesture match
-                x,y = zip(*waypts)
-                matches = dollar.query(x,y,scale,samplesize,templates_fh)
-                score,theta,clsid = matches[0]
+            CountState() # Tracking failed this frame
+            if statecnt == 0:
+                if len(waypts) > 10:
+                    # Find best gesture match
+                    x,y = zip(*waypts)
+                    matches = dollar.query(x,y,scale,samplesize,templates_fh)
+                    score,theta,clsid = matches[0]
 
-                ds = templates_fh[clsid][0]
-                x,y = dollar.preprocess(x,y,scale,samplesize)
+                    ds = templates_fh[clsid][0]
+                    x,y = dollar.preprocess(x,y,scale,samplesize)
 
-                # Show preprocessed gesture and closest matching template
-                artists.append((gui.lines['template'],(ds['x'],ds['y'])))
-                artists.append((gui.lines['query'],(x,y)))
-                gui.axes['match'].set_title("%s (score: %.2f)" % (clsid,score))
-                redraw = True
+                    # Show preprocessed gesture and closest matching template
+                    artists.append((gui.lines['template'],(ds['x'],ds['y'])))
+                    artists.append((gui.lines['query'],(x,y)))
+                    gui.axes['match'].set_title("%s (N=%d, score: %.2f)" % (clsid,len(waypts),score))
+                    redraw = True
 
-                print "Class: %s (%.2f)" % (clsid,score)
-                print "Npoints:", len(waypts)
-            # remove this gesture from the drawing board
-            waypts = []
+                    print "Class: %s (%.2f)" % (clsid,score)
+                    print "Npoints:", len(waypts)
+                # remove this gesture from the drawing board
+                waypts = []
     elif state == 'search':
-        if movearea > blobthresh_hi:
+        x0,y0,x1,y1 = move_roi
+        if np.sum(skin[y0:y1,x0:x1]) > blobthresh_hi:
             # Gesture candidate detected. Check that proportion of skin to
             # area of movement bbox is high enough
-            x0,y0,x1,y1 = move_roi
-            if np.sum(skin[y0:y1,x0:x1]) > ((y1-y0)*(x1-x0)//12):
-                CountState()    # Increase trust for gesture candidate
-                if statecnt == 0:
-                    # Estimate hand centroid as the centroid of skin colored pixels
-                    # inside the bbox of detected movement
-                    (x0,y0,x1,y1),(xcom,ycom) = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))
-                    waypts.append((xcom,ycom))
+            CountState()    # Increase trust for gesture candidate
+            if statecnt == 0:
+                # Estimate hand centroid as the centroid of skin colored pixels
+                # inside the bbox of detected movement
+                (x0,y0,x1,y1),(xcom,ycom) = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))
+                waypts = [(xcom,ycom)]
 
-                    # Use the hand centroid estimate as our initial estimate for
-                    # tracking
-                    # Estimate the hand's bounding box by taking the minimum
-                    # vertical length to where the skin ends. If the hand is
-                    # vertical, this should correspond to the length from the palm
-                    # to tip of fingers
-                    h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
-                    w = min(x1-x0,MAXLEN)
-                    track_bbox = xcom-w//2,ycom-h//2,w,h                
+                # Use the hand centroid estimate as our initial estimate for
+                # tracking
+                # Estimate the hand's bounding box by taking the minimum
+                # vertical length to where the skin ends. If the hand is
+                # vertical, this should correspond to the length from the palm
+                # to tip of fingers
+                h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
+                w = min(x1-x0,MAXLEN)
+                track_bbox = xcom-w//2,ycom-h//2,w,h                
 
-                    # Use the skin bbox/centroid to initiate tracking
-                    crcb_roi = img_crcb[y0:y1,x0:x1]
-                    skin_roi = skin[y0:y1,x0:x1]
-                    hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), nbins, ranges)
-                    # Normalize to 1 to get the sample PDF
-                    cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
+                # Use the skin bbox/centroid to initiate tracking
+                crcb_roi = img_crcb[y0:y1,x0:x1]
+                skin_roi = skin[y0:y1,x0:x1]
+                hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), nbins, ranges)
+                # Normalize to 1 to get the sample PDF
+                cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
 
-                    print "Skin Tracking:",xcom,ycom,w,h
-                    cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
-                    cv2.circle(dispimg,(xcom,ycom),5,(0,255,0),thickness=-1)
-            else:
-                statecnt = 0
+                print "Skin Tracking:",xcom,ycom,w,h
+                cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
+                cv2.circle(dispimg,(xcom,ycom),5,(0,255,0),thickness=-1)
+                redraw = True
         else:
             statecnt = 0
     # Update the figure

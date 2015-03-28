@@ -23,7 +23,7 @@ class DemoGUI(object):
         self.lines = {}
         self.lines['template'] = self.axes['match'].plot((),(),marker='x',color='g')[0]
         self.lines['query'] = self.axes['match'].plot((),(),marker='o',color='b')[0]
-        self.lines['draw'] = self.axes['draw'].plot((),(),marker='o',color='b')[0]
+        self.lines['draw'] = self.axes['draw'].plot((),(),color='b')[0]
 
         self.axes['match'].set_ylim(-scale//2-10,scale//2+10)
         self.axes['match'].set_xlim(-scale//2-10,scale//2+10)
@@ -70,18 +70,17 @@ class DemoGUI(object):
         if not self.artists: return
         artists, redraw = self.artists.pop(0)
 
-        if redraw:
-            self.fig.canvas.draw()
-            return
-
         update_axes = set(a.axes for a,d in artists)
         for ax in update_axes:
             self.fig.canvas.restore_region(self.bg_cache[ax])
         for (a,d) in artists:
             a.set_data(d)
             a.axes.draw_artist(a)
-        for ax in update_axes:
-            self.fig.canvas.blit(ax.bbox)
+
+        if redraw:
+            self.fig.canvas.draw()
+        else:
+            for ax in update_axes: self.fig.canvas.blit(ax.bbox)
 
     def close(self):
         plt.close(self.fig)
