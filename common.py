@@ -15,6 +15,9 @@ def findBBoxCoM(mask,roi=None):
     else:
         x0,y0,x1,y1 = 0,0,mask.shape[1],mask.shape[0]
 
+    maskarea = np.sum(mask)
+    if maskarea == 0: raise ValueError
+
     masked_cols = mask*colnums[x0:x1].reshape(1,-1)
     masked_rows = mask*rownums[y0:y1].reshape(-1,1)
     x0,x1 = np.min(masked_cols[mask]), np.max(masked_cols[mask])+1
