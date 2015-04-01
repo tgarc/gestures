@@ -190,7 +190,6 @@ while imgq[-1].size:
     if waypts:
         artists.append((gui.lines['draw'],zip(*list(waypts))))
     gui.update_artists(list(artists),redraw=redraw)
-    gui.fig.canvas.get_tk_widget().update()
 
     # Updating threshold depends on current background model
     # so always update this before updating background

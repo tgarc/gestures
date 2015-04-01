@@ -63,8 +63,9 @@ class DemoGUI(object):
     def update_artists(self,artists,redraw=False):
         self.artists.append((artists,redraw))
         if (len(self.artists) - self.queuelen) > 0:
-            print "Warning: Artist queue is behind by %d" % (len(self.artists)-1)
+            print "Warning: Artist queue fell behind by %d" % (len(self.artists)-1)
         self.queuelen = len(self.artists)
+        self.fig.canvas.get_tk_widget().update()
 
     def _update(self):
         if not self.artists: return
