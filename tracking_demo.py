@@ -19,6 +19,7 @@ STATELEN = 3
 STATECYCLE = cycle(('wait','search','track'))
 
 krn = np.ones((3,3),dtype=np.uint8)
+krn2 = np.ones((5,5),dtype=np.uint8)
 term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 chans = [1,2]
 ranges = [0, 256, 0, 256]
@@ -68,16 +69,18 @@ while imgq[-1].size:
     # skin segementation
     img_crcb = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2YCR_CB)
     cr,cb = img_crcb[:,:,1], img_crcb[:,:,2]
-    # skin = (77 <= cb)&(cb <= 127)
-    # skin &= (133 <= cr)&(cr <= 173)
-    skin = (60 <= cb)&(cb <= 90)
-    skin &= (165 <= cr)&(cr <= 195)
+    skin = (77 <= cb)&(cb <= 127)
+    skin &= (133 <= cr)&(cr <= 173)
+    # skin = (60 <= cb)&(cb <= 90)
+    # skin &= (165 <= cr)&(cr <= 195)
     cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
     cv2.dilate(skin.view(np.uint8),krn,dst=skin.view(np.uint8),iterations=2)
     cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
 
     # motion detection
     moving = (cv2.absdiff(imgq_g[0],imgq_g[-1]) > T) & (cv2.absdiff(imgq_g[1],imgq_g[-1]) > T)
+    cv2.erode(moving.view(np.uint8),krn2,dst=moving.view(np.uint8))
+    cv2.dilate(moving.view(np.uint8),krn2,dst=moving.view(np.uint8))    
     if np.sum(moving):
         move_roi, move_com = cmn.findBBoxCoM(moving)
         x0,y0,x1,y1 = move_roi
@@ -114,9 +117,9 @@ while imgq[-1].size:
             x,y,w,h = track_bbox
             x0,y0,x1,y1 = x,y,x+w,y+h
 
-            # xcom,ycom = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1]
-            xcom = (x0+x1)/2
-            ycom = (y0+y1)/2
+            xcom,ycom = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1]
+            # xcom = (x0+x1)/2
+            # ycom = (y0+y1)/2
 
             cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
             cv2.circle(dispimg,(xcom,ycom),5,(0,255,0),thickness=-1)
@@ -154,7 +157,7 @@ while imgq[-1].size:
             if statecnt == 0:
                 # Estimate hand centroid as the centroid of skin colored pixels
                 # inside the bbox of detected movement
-                (x0,y0,x1,y1),(xcom,ycom) = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))
+                hand_bbox,(xcom,ycom) = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))
                 waypts = [(xcom,ycom)]
 
                 # Use the hand centroid estimate as our initial estimate for
@@ -163,11 +166,13 @@ while imgq[-1].size:
                 # vertical length to where the skin ends. If the hand is
                 # vertical, this should correspond to the length from the palm
                 # to tip of fingers
+                x0_hand, x1_hand = hand_bbox[0], hand_bbox[2]
                 h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
                 w = min(x1-x0,MAXLEN)
                 track_bbox = xcom-w//2,ycom-h//2,w,h                
 
                 # Use the skin bbox/centroid to initiate tracking
+                x0,y0,x1,y1 = hand_bbox
                 crcb_roi = img_crcb[y0:y1,x0:x1]
                 skin_roi = skin[y0:y1,x0:x1]
                 hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), nbins, ranges)

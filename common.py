@@ -16,13 +16,13 @@ def findBBoxCoM(mask,roi=None):
         x0,y0,x1,y1 = 0,0,mask.shape[1],mask.shape[0]
 
     maskarea = np.sum(mask)
-    if maskarea == 0: raise ValueError
+    if maskarea == 0: raise ValueError("all-zero array passed")
 
     masked_cols = mask*colnums[x0:x1].reshape(1,-1)
     masked_rows = mask*rownums[y0:y1].reshape(-1,1)
     x0,x1 = np.min(masked_cols[mask]), np.max(masked_cols[mask])+1
     y0,y1 = np.min(masked_rows[mask]), np.max(masked_rows[mask])+1
-    xcom = np.sum(masked_cols)//np.sum(mask)
-    ycom = np.sum(masked_rows)//np.sum(mask)
+    xcom = np.sum(masked_cols)//maskarea
+    ycom = np.sum(masked_rows)//maskarea
 
     return (x0,y0,x1,y1),(xcom,ycom)
