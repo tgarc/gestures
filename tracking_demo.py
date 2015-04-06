@@ -74,25 +74,29 @@ while imgq[-1].size:
     # skin = (60 <= cb)&(cb <= 90)
     # skin &= (165 <= cr)&(cr <= 195)
     cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
-    cv2.dilate(skin.view(np.uint8),krn,dst=skin.view(np.uint8),iterations=2)
-    cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
+    cv2.dilate(skin.view(np.uint8),krn2,dst=skin.view(np.uint8),iterations=2)
+    cv2.erode(skin.view(np.uint8),krn2,dst=skin.view(np.uint8))
 
     # motion detection
     moving = (cv2.absdiff(imgq_g[0],imgq_g[-1]) > T) & (cv2.absdiff(imgq_g[1],imgq_g[-1]) > T)
-    motion = moving.copy()
-    cv2.erode(motion.view(np.uint8),krn2,dst=motion.view(np.uint8))
-    cv2.dilate(motion.view(np.uint8),krn2,dst=motion.view(np.uint8))    
-    if np.sum(motion):
-        move_roi, move_com = cmn.findBBoxCoM(motion)
+    cv2.erode(moving.view(np.uint8),krn,dst=moving.view(np.uint8),iterations=1)
+    cv2.dilate(moving.view(np.uint8),krn2,dst=moving.view(np.uint8),iterations=2)
+    cv2.erode(moving.view(np.uint8),krn2,dst=moving.view(np.uint8))
+    if np.sum(moving):
+        move_roi, move_com = cmn.findBBoxCoM(moving)
         x0,y0,x1,y1 = move_roi
         print "Moving:", (x0+x1)//2, (y0+y1)//2, x1-x0, y1-y0
 
         # fill in the area inside the boundaries of the motion mask
-        infill = (cv2.absdiff(imgq_g[-1],bkgnd) > T)[y0:y1,x0:x1]
-        cv2.erode(infill.view(np.uint8),krn,dst=infill.view(np.uint8))
-        cv2.dilate(infill.view(np.uint8),krn,dst=infill.view(np.uint8))
-        motion[y0:y1,x0:x1] |= infill
+        backg = (cv2.absdiff(imgq_g[-1],bkgnd) > T)[y0:y1,x0:x1]
+        cv2.erode(backg.view(np.uint8),krn,dst=backg.view(np.uint8),iterations=1)
+        cv2.dilate(backg.view(np.uint8),krn2,dst=backg.view(np.uint8),iterations=2)
+        cv2.erode(backg.view(np.uint8),krn2,dst=backg.view(np.uint8))
+        moving[y0:y1,x0:x1] |= backg
+
+        motion = moving.copy()
     else:
+        motion = moving
         move_roi = 0,0,0,0
 
     # set up the image to display
@@ -114,9 +118,9 @@ while imgq[-1].size:
         x0,y0,x1,y1 = move_roi
         if np.sum(skin[y0:y1,x0:x1]) > blobthresh_lo:
             bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
-            movereg = np.zeros_like(motion)
-            movereg[y0:y1,x0:x1] = True
-            bkproject &= movereg
+            # movereg = np.zeros_like(motion)
+            # movereg[y0:y1,x0:x1] = True
+            bkproject &= motion
 
             # notice we're using the track_bbox from last iteration
             # for the intitial estimate
@@ -205,7 +209,7 @@ while imgq[-1].size:
     T[T<T0] = T0
 
     bkgnd[~moving] = alpha*bkgnd[~moving] + (1-alpha)*imgq_g[-1][~moving]
-    bkgnd[moving] = imgq_g[-1][moving]
+    # bkgnd[moving] = bkgnd[moving]
 
     # shift buffer left        
     imgq[:-1] = imgq[1:] 
