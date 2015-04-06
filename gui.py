@@ -23,12 +23,13 @@ class DemoGUI(object):
         self.lines = {}
         self.lines['template'] = self.axes['match'].plot((),(),marker='x',color='g')[0]
         self.lines['query'] = self.axes['match'].plot((),(),marker='o',color='b')[0]
-        self.lines['draw'] = self.axes['draw'].plot((),(),color='b')[0]
+        self.lines['draw'] = self.axes['draw'].plot((),(),color='b',linewidth=5)[0]
 
         self.axes['match'].set_ylim(-scale//2-10,scale//2+10)
         self.axes['match'].set_xlim(-scale//2-10,scale//2+10)
-        self.axes['draw'].set_ylim(0,imshape[0])
+        self.axes['draw'].set_ylim(imshape[0],0)
         self.axes['draw'].set_xlim(0,imshape[1])
+        self.axes['draw'].xaxis.tick_top()
 
         self.imdisp = self.axes['raw'].imshow(np.zeros(imshape,dtype=np.uint8))
 
