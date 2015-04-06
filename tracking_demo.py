@@ -31,11 +31,8 @@ imgq = [cap.read()]*3
 imgq_g = [cv2.cvtColor(imgq[0],cv2.COLOR_BGR2GRAY)]*3
 imshape = imgq_g[0].shape
 
-MAXLEN = max(imshape)//2
-MAXAREA = imgq_g[-1].size//2
-blobthresh_hi = (min(imshape)//8)**2
-blobthresh_lo = 3*blobthresh_hi//4
-T_move = 0#np.pi*min(imshape)//2
+MAXAREA = imgq_g[0].size//4
+blobthresh = (min(imshape)//8)**2
 
 state = STATECYCLE.next()
 statecnt = 0
@@ -103,7 +100,7 @@ while imgq[-1].size:
         CountState()
     elif state == 'track':
         x0,y0,x1,y1 = move_roi
-        if np.sum(skin[y0:y1,x0:x1]) > blobthresh_lo:
+        if np.sum(skin[y0:y1,x0:x1]) > blobthresh:
             bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
             bkproject[y0+track_bbox[-1]:,:] = 0
             bkproject &= motion
@@ -114,7 +111,11 @@ while imgq[-1].size:
             x,y,w,h = track_bbox
             x0,y0,x1,y1 = x,y,x+w,y+h
 
-            waypts.append(cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1])
+            try:
+                xcom,ycom = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1]
+            except ValueError:
+                xcom,ycom = x0+w//2,y0+h//2
+            waypts.append((xcom,ycom))
         else:
             CountState() # Tracking failed this frame
             if statecnt == 0:
@@ -153,20 +154,18 @@ while imgq[-1].size:
             # fingers
             y0,y1 = hand_bbox[1],hand_bbox[-1]
             # x0,y0,x1,y1 = hand_bbox
-            h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
-            w = min(x1-x0,MAXLEN)
+            h = 2*min((y1-ycom,ycom-y0))
+            w = x1-x0
             ecc = w/float(h)
-            skinbox = hand_bbox[2]*hand_bbox[3]
-            print ecc
-            print skinarea/float(skinbox)
+            skinbox = h*w
         else:
             ecc = 0
             skinbox = 0
 
-        if skinarea > blobthresh_hi and skinbox < MAXAREA and 0.85 <= ecc and ecc <= 1.1:
+        if skinarea > blobthresh and skinbox < MAXAREA and 0.4 <= ecc and ecc <= 1.1:
             # Gesture candidate detected. Check that proportion of skin to
             # area of movement bbox is high enough
-            CountState(STATELEN)    # Increase trust for gesture candidate
+            CountState(STATELEN)
             if statecnt == 0:
                 # Use the skin bbox/centroid to initiate tracking
                 crcb_roi = img_crcb[y0:y1,x0:x1]
@@ -176,6 +175,7 @@ while imgq[-1].size:
                 cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
                 waypts = [(xcom,ycom)]
                 track_bbox = x0,y0,x1-x0,y1-y0
+                redraw = True
         else:
             statecnt = 0
 

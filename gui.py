@@ -28,7 +28,7 @@ class DemoGUI(object):
         self.axes['match'].set_ylim(-scale//2-10,scale//2+10)
         self.axes['match'].set_xlim(-scale//2-10,scale//2+10)
         self.axes['draw'].set_ylim(imshape[0],0)
-        self.axes['draw'].set_xlim(0,imshape[1])
+        self.axes['draw'].set_xlim(imshape[1],0)
         self.axes['draw'].xaxis.tick_top()
 
         self.imdisp = self.axes['raw'].imshow(np.zeros(imshape,dtype=np.uint8))
