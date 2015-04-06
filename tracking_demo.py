@@ -31,7 +31,8 @@ imgq = [cap.read()]*3
 imgq_g = [cv2.cvtColor(imgq[0],cv2.COLOR_BGR2GRAY)]*3
 imshape = imgq_g[0].shape
 
-MAXLEN = min(imshape)//2
+MAXLEN = max(imshape)//2
+MAXAREA = imgq_g[-1].size//2
 blobthresh_hi = (min(imshape)//8)**2
 blobthresh_lo = 3*blobthresh_hi//4
 T_move = 0#np.pi*min(imshape)//2
@@ -91,7 +92,7 @@ while imgq[-1].size:
         cv2.erode(backg.view(np.uint8),krn,dst=backg.view(np.uint8),iterations=1)
         cv2.dilate(backg.view(np.uint8),krn2,dst=backg.view(np.uint8),iterations=2)
         cv2.erode(backg.view(np.uint8),krn2,dst=backg.view(np.uint8))
-        moving[y0:y1,x0:x1] = backg
+        moving[y0:y1,x0:x1] |= backg
 
         motion = moving.copy()
     else:
@@ -104,8 +105,7 @@ while imgq[-1].size:
         x0,y0,x1,y1 = move_roi
         if np.sum(skin[y0:y1,x0:x1]) > blobthresh_lo:
             bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
-            # movereg = np.zeros_like(motion)
-            # movereg[y0:y1,x0:x1] = True
+            bkproject[y0+track_bbox[-1]:,:] = 0
             bkproject &= motion
 
             # notice we're using the track_bbox from last iteration
@@ -114,11 +114,7 @@ while imgq[-1].size:
             x,y,w,h = track_bbox
             x0,y0,x1,y1 = x,y,x+w,y+h
 
-            xcom,ycom = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1]
-            # xcom = (x0+x1)/2
-            # ycom = (y0+y1)/2
-
-            waypts.append((xcom,ycom))
+            waypts.append(cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1])
         else:
             CountState() # Tracking failed this frame
             if statecnt == 0:
@@ -143,42 +139,43 @@ while imgq[-1].size:
                 waypts = []
     elif state == 'search':
         x0,y0,x1,y1 = move_roi
-        if np.sum(skin[y0:y1,x0:x1]) > blobthresh_hi:
+        skinarea = np.sum(skin[y0:y1,x0:x1])
+
+        # Estimate hand centroid as the centroid of skin colored pixels inside
+        # the bbox of detected movement
+        if skinarea:
+            hand_bbox,(xcom,ycom) = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))        
+
+            # Use the hand centroid estimate as our initial estimate for
+            # tracking Estimate the hand's bounding box by taking the minimum
+            # vertical length to where the skin ends. If the hand is vertical,
+            # this should correspond to the length from the palm to tip of
+            # fingers
+            y0,y1 = hand_bbox[1],hand_bbox[-1]
+            # x0,y0,x1,y1 = hand_bbox
+            h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
+            w = min(x1-x0,MAXLEN)
+            ecc = w/float(h)
+            skinbox = hand_bbox[2]*hand_bbox[3]
+            print ecc
+            print skinarea/float(skinbox)
+        else:
+            ecc = 0
+            skinbox = 0
+
+        if skinarea > blobthresh_hi and skinbox < MAXAREA and 0.85 <= ecc and ecc <= 1.1:
             # Gesture candidate detected. Check that proportion of skin to
             # area of movement bbox is high enough
-            CountState()    # Increase trust for gesture candidate
+            CountState(STATELEN)    # Increase trust for gesture candidate
             if statecnt == 0:
-                # Estimate hand centroid as the centroid of skin colored pixels
-                # inside the bbox of detected movement
-                hand_bbox,(xcom,ycom) = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))
-
-                # Use the hand centroid estimate as our initial estimate for
-                # tracking
-                # Estimate the hand's bounding box by taking the minimum
-                # vertical length to where the skin ends. If the hand is
-                # vertical, this should correspond to the length from the palm
-                # to tip of fingers
-                # x0_hand, x1_hand = hand_bbox[0], hand_bbox[2]
-                x0,y0,x1,y1 = hand_bbox
-                h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
-                w = min(x1-x0,MAXLEN)
-                track_bbox = xcom-w//2,ycom-h//2,w,h
-
                 # Use the skin bbox/centroid to initiate tracking
                 crcb_roi = img_crcb[y0:y1,x0:x1]
                 skin_roi = skin[y0:y1,x0:x1]
                 hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), nbins, ranges)
                 # Normalize to 1 to get the sample PDF
                 cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
-
-                bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
-                niter, track_bbox = cv2.CamShift(bkproject,track_bbox,term_crit)
-                x,y,w,h = track_bbox
-                x0,y0,x1,y1 = x,y,x+w,y+h
-                xcom,ycom = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1]
                 waypts = [(xcom,ycom)]
-
-                redraw = True
+                track_bbox = x0,y0,x1-x0,y1-y0
         else:
             statecnt = 0
 
@@ -227,3 +224,4 @@ while imgq[-1].size:
     imgq_g[:-1] = imgq_g[1:]
     imgq[-1] = cap.read()
     artists = [] # empty the artists bucket
+    redraw = False
