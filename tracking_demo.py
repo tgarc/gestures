@@ -73,7 +73,7 @@ while imgq[-1].size:
     skin &= (133 <= cr)&(cr <= 173)
     # skin = (60 <= cb)&(cb <= 90)
     # skin &= (165 <= cr)&(cr <= 195)
-    cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
+    cv2.erode(skin.view(np.uint8),krn2,dst=skin.view(np.uint8))
     cv2.dilate(skin.view(np.uint8),krn2,dst=skin.view(np.uint8),iterations=2)
     cv2.erode(skin.view(np.uint8),krn2,dst=skin.view(np.uint8))
 
@@ -85,32 +85,18 @@ while imgq[-1].size:
     if np.sum(moving):
         move_roi, move_com = cmn.findBBoxCoM(moving)
         x0,y0,x1,y1 = move_roi
-        print "Moving:", (x0+x1)//2, (y0+y1)//2, x1-x0, y1-y0
 
         # fill in the area inside the boundaries of the motion mask
         backg = (cv2.absdiff(imgq_g[-1],bkgnd) > T)[y0:y1,x0:x1]
         cv2.erode(backg.view(np.uint8),krn,dst=backg.view(np.uint8),iterations=1)
         cv2.dilate(backg.view(np.uint8),krn2,dst=backg.view(np.uint8),iterations=2)
         cv2.erode(backg.view(np.uint8),krn2,dst=backg.view(np.uint8))
-        moving[y0:y1,x0:x1] |= backg
+        moving[y0:y1,x0:x1] = backg
 
         motion = moving.copy()
     else:
         motion = moving
         move_roi = 0,0,0,0
-
-    # set up the image to display
-    if gui.draw_state == 0:
-        dispimg = dispimg
-    elif gui.draw_state == 1:
-        dispimg[~skin] = 0
-    elif gui.draw_state == 2:
-        dispimg[motion] = 255
-        dispimg[~motion] = 0
-    elif gui.draw_state == 3:
-        dispimg = cv2.cvtColor(bkproject*255,cv2.COLOR_GRAY2BGR)
-    if np.sum(motion):
-        cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,255,0),thickness=2)
 
     if state == 'wait':
         CountState()
@@ -132,11 +118,7 @@ while imgq[-1].size:
             # xcom = (x0+x1)/2
             # ycom = (y0+y1)/2
 
-            cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
-            cv2.circle(dispimg,(xcom,ycom),5,(0,255,0),thickness=-1)
             waypts.append((xcom,ycom))
-
-            print "Skin Tracking:",x0,y0,x1,y1
         else:
             CountState() # Tracking failed this frame
             if statecnt == 0:
@@ -169,7 +151,6 @@ while imgq[-1].size:
                 # Estimate hand centroid as the centroid of skin colored pixels
                 # inside the bbox of detected movement
                 hand_bbox,(xcom,ycom) = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))
-                waypts = [(xcom,ycom)]
 
                 # Use the hand centroid estimate as our initial estimate for
                 # tracking
@@ -177,25 +158,55 @@ while imgq[-1].size:
                 # vertical length to where the skin ends. If the hand is
                 # vertical, this should correspond to the length from the palm
                 # to tip of fingers
-                x0_hand, x1_hand = hand_bbox[0], hand_bbox[2]
+                # x0_hand, x1_hand = hand_bbox[0], hand_bbox[2]
+                x0,y0,x1,y1 = hand_bbox
                 h = min(2*min((y1-ycom,ycom-y0)),MAXLEN)
                 w = min(x1-x0,MAXLEN)
-                track_bbox = xcom-w//2,ycom-h//2,w,h                
+                track_bbox = xcom-w//2,ycom-h//2,w,h
 
                 # Use the skin bbox/centroid to initiate tracking
-                x0,y0,x1,y1 = hand_bbox
                 crcb_roi = img_crcb[y0:y1,x0:x1]
                 skin_roi = skin[y0:y1,x0:x1]
                 hist = cv2.calcHist([crcb_roi], chans, skin_roi.view(np.uint8), nbins, ranges)
                 # Normalize to 1 to get the sample PDF
                 cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
 
-                print "Skin Tracking:",xcom,ycom,w,h
-                cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
-                cv2.circle(dispimg,(xcom,ycom),5,(0,255,0),thickness=-1)
+                bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
+                niter, track_bbox = cv2.CamShift(bkproject,track_bbox,term_crit)
+                x,y,w,h = track_bbox
+                x0,y0,x1,y1 = x,y,x+w,y+h
+                xcom,ycom = cmn.findBBoxCoM(skin,(x0,y0,x1,y1))[1]
+                waypts = [(xcom,ycom)]
+
                 redraw = True
         else:
             statecnt = 0
+
+    # Update the display image
+    if gui.draw_state == 0:
+        dispimg = dispimg
+    elif gui.draw_state == 1:
+        dispimg[~skin] = 0
+    elif gui.draw_state == 2:
+        dispimg[motion] = 255
+        dispimg[~motion] = 0
+    elif gui.draw_state == 3:
+        dispimg = cv2.cvtColor(bkproject*255,cv2.COLOR_GRAY2BGR)
+    elif gui.draw_state == 4:
+        dispimg = cv2.cvtColor(bkgnd,cv2.COLOR_GRAY2BGR)
+
+    # add skin and motion bounding box annotations
+    if state == 'track':
+        print "Tracking:",track_bbox
+        x,y,w,h = track_bbox
+        cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
+        cv2.circle(dispimg,waypts[-1],5,(0,255,0),thickness=-1)
+    if np.sum(motion):
+        x0,y0,x1,y1 = move_roi
+        move_bbox = x0,y0,x1-x0,y1-y0
+        print "Moving:", move_bbox
+        cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,255,0),thickness=2)
+
     # Update the figure
     artists.append((gui.imdisp,dispimg[:,:,::-1].copy()))
     if waypts:

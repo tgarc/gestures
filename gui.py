@@ -48,7 +48,7 @@ class DemoGUI(object):
         self.timer.start()
 
     def onclick(self,event):
-        self.draw_state = (self.draw_state+1)%4
+        self.draw_state = (self.draw_state+1)%5
         if self.draw_state == 0:
             self.axes['raw'].title.set_text('raw')
         elif self.draw_state == 1:
@@ -57,6 +57,8 @@ class DemoGUI(object):
             self.axes['raw'].title.set_text('motion')            
         elif self.draw_state == 3:
             self.axes['raw'].title.set_text('backproject')
+        elif self.draw_state == 4:
+            self.axes['raw'].title.set_text('background')
         self.timer.stop()
         self.fig.canvas.draw()
         self.timer.start()        
