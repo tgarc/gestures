@@ -77,9 +77,9 @@ while imgq[-1].size:
 
     # motion detection
     moving = (cv2.absdiff(imgq_g[0],imgq_g[-1]) > T) & (cv2.absdiff(imgq_g[1],imgq_g[-1]) > T)
-    cv2.erode(moving.view(np.uint8),krn,dst=moving.view(np.uint8),iterations=1)
+    cv2.erode(moving.view(np.uint8),krn,dst=moving.view(np.uint8))
     cv2.dilate(moving.view(np.uint8),krn2,dst=moving.view(np.uint8),iterations=2)
-    cv2.erode(moving.view(np.uint8),krn2,dst=moving.view(np.uint8))
+    cv2.erode(moving.view(np.uint8),krn2,dst=moving.view(np.uint8))    
     if np.sum(moving):
         move_roi, move_com = cmn.findBBoxCoM(moving)
         x0,y0,x1,y1 = move_roi
@@ -87,14 +87,11 @@ while imgq[-1].size:
         # fill in the area inside the boundaries of the motion mask
         backg = (cv2.absdiff(imgq_g[-1],bkgnd) > T)[y0:y1,x0:x1]
         cv2.erode(backg.view(np.uint8),krn,dst=backg.view(np.uint8),iterations=1)
-        cv2.dilate(backg.view(np.uint8),krn2,dst=backg.view(np.uint8),iterations=2)
-        cv2.erode(backg.view(np.uint8),krn2,dst=backg.view(np.uint8))
+        cv2.dilate(backg.view(np.uint8),krn,dst=backg.view(np.uint8),iterations=1)
         moving[y0:y1,x0:x1] |= backg
-
-        motion = moving.copy()
     else:
-        motion = moving
         move_roi = 0,0,0,0
+    motion = moving.copy()
 
     if state == 'wait':
         CountState()
@@ -102,7 +99,7 @@ while imgq[-1].size:
         x0,y0,x1,y1 = move_roi
         if np.sum(skin[y0:y1,x0:x1]) > blobthresh:
             bkproject = cv2.calcBackProject([img_crcb],chans,hist,ranges,1)
-            bkproject[y0+track_bbox[-1]:,:] = 0
+            bkproject[y0+track_bbox[-1]:,] = 0
             bkproject &= motion
 
             # notice we're using the track_bbox from last iteration

@@ -30,6 +30,7 @@ class DemoGUI(object):
         self.axes['draw'].set_ylim(imshape[0],0)
         self.axes['draw'].set_xlim(imshape[1],0)
         self.axes['draw'].xaxis.tick_top()
+        self.axes['draw'].yaxis.tick_right()
 
         self.imdisp = self.axes['raw'].imshow(np.zeros(imshape,dtype=np.uint8))
 
@@ -37,7 +38,9 @@ class DemoGUI(object):
         self.bg_cache = {ax:self.fig.canvas.copy_from_bbox(ax.bbox) for ax in self.fig.axes}
 
         self.draw_state = 0
+        self.drawcount = 0
         self.fig.canvas.mpl_connect('button_press_event', self.onclick)
+        self.fig.canvas.mpl_connect('key_press_event', self.onkey)
 
         self.timer = self.fig.canvas.new_timer(interval=interval)
         self.timer.add_callback(self._update)
@@ -61,7 +64,12 @@ class DemoGUI(object):
             self.axes['raw'].title.set_text('background')
         self.timer.stop()
         self.fig.canvas.draw()
+        self.drawcount += 1
         self.timer.start()        
+
+    def onkey(self,event):
+        if event.key == 's':
+            self.fig.savefig('tracking_demo_%d.jpg' % self.drawcount)
 
     def update_artists(self,artists,redraw=False):
         self.artists.append((artists,redraw))
@@ -72,6 +80,7 @@ class DemoGUI(object):
 
     def _update(self):
         if not self.artists: return
+        self.drawcount += 1
         artists, redraw = self.artists.pop(0)
 
         update_axes = set(a.axes for a,d in artists)
@@ -88,3 +97,4 @@ class DemoGUI(object):
 
     def close(self):
         plt.close(self.fig)
+        self.artists = []
