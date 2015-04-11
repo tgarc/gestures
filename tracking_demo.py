@@ -54,7 +54,7 @@ def gesture_match(query,template,score,theta,clsid):
     print "Class: %s (%.2f)" % (clsid,score)
     print "Npoints:", n
 
-hrsm = HandGestureRecognizer(imshape,'data/templates.hdf5',callback=gesture_match)
+hrsm = HandGestureRecognizer(imshape,'data/templates.hdf5',gesture_match,0.8)
 while not cap.closed:
     redraw = False
     imgq_g[-1] = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2GRAY)

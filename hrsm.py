@@ -56,7 +56,7 @@ def estimateHand(skin,move_bbox):
 
 class HandGestureRecognizer(StateMachineBase):
 
-    def __init__(self,imshape,templates,callback=None):
+    def __init__(self,imshape,templates,callback=None,match_threshold=0.8):
         """
         State machine for hand gesture recognition.
 
@@ -75,6 +75,7 @@ class HandGestureRecognizer(StateMachineBase):
         super(self.__class__,self).__init__(self.Wait)
 
         self.callback = callback
+        self.match_threshold = match_threshold
         if isinstance(templates,basestring):
             self.template_ds = h5py.File(templates,'r')
         else:
@@ -158,11 +159,12 @@ class HandGestureRecognizer(StateMachineBase):
         else:
             if len(self.waypts) > MINWAYPTS and self.callback is not None:
                 # Find best gesture match
-                x,y = zip(*self.waypts)
+                x,y = zip(*[(self.imshape[1]-x,self.imshape[0]-y) for x,y in self.waypts])
                 matches = dollar.query(x,y,scale,samplesize,self.template_ds)
                 score,theta,clsid = matches[0]
-                ds = self.template_ds[clsid][0]
 
-                self.callback((x,y),(ds['x'],ds['y']),score,theta,clsid)
+                if score > self.match_threshold:
+                    ds = self.template_ds[clsid][0]
+                    self.callback((x,y),(ds['x'],ds['y']),score,theta,clsid)
 
             return self.Wait
