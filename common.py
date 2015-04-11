@@ -19,7 +19,8 @@ def findBBoxCoM(mask,roi=None):
     if mask.shape != __imshape: update_imshape(mask.shape)
 
     if roi:
-        x0,y0,x1,y1 = roi
+        x,y,w,h = roi
+        x0,y0,x1,y1 = x,y,x+w,y+h
         mask = mask[y0:y1,x0:x1]
     else:
         x0,y0,x1,y1 = 0,0,mask.shape[1],mask.shape[0]
@@ -34,4 +35,4 @@ def findBBoxCoM(mask,roi=None):
     xcom = np.sum(masked_cols)//maskarea
     ycom = np.sum(masked_rows)//maskarea
 
-    return (x0,y0,x1,y1),(xcom,ycom)
+    return (x0,y0,x1-x0,y1-y0),(xcom,ycom)
