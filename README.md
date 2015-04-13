@@ -9,7 +9,7 @@ version.
 
 # Demo
 
-[![demo](http://img.youtube.com/vi/ofHGYk0FUa4/0.jpg)]((http://www.youtube.com/watch?v=ofHGYk0FUa4)
+[![demo](http://img.youtube.com/vi/ofHGYk0FUa4/0.jpg)](http://www.youtube.com/watch?v=ofHGYk0FUa4)
 
 <iframe width="420" height="315" src="https://www.youtube.com/embed/ofHGYk0FUa4" frameborder="0" allowfullscreen></iframe>
 
