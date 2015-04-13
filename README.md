@@ -1,5 +1,5 @@
 # gesture_recognition
-A homebrew hand gesture recognition suite.
+A homebrew hand motion gesture recognition suite.
 
 I started this project so I could eventually implement it on a beaglebone to
 control a [pandora](http://www.pandora.com/) client through
