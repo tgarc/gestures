@@ -7,6 +7,10 @@ control a [pandora](http://www.pandora.com/) client through
 this one will be significantly more complex than the eventual beaglebone
 version.
 
+# Demo
+
+<iframe width="420" height="315" src="https://www.youtube.com/embed/ofHGYk0FUa4" frameborder="0" allowfullscreen></iframe>
+
 
 ## Overview
 I've split the project up as follows
