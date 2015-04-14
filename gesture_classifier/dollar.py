@@ -81,8 +81,12 @@ def compare(x,y,tmp,phi_a,phi_b,tol):
 def preprocess(x,y,size,N):
     # must be done in order: resample,rotate,scale,translate
     x,y = resample(x,y,N)
+
+    # x_c = np.mean(x)
+    # y_c = np.mean(y)
     # theta = np.arctan2(y_c-y[0],x_c-x[0])
     # x,y = rotate(x,y,theta,x_c,y_c)
+
     x,y = scale(x,y,size)
 
     x_c = np.mean(x)
@@ -92,7 +96,7 @@ def preprocess(x,y,size,N):
 
     return x,y
 
-def query(x,y,size,N,templates,phi_a=-np.pi/6,phi_b=np.pi/6,tol=np.pi/90):
+def query(x,y,size,N,templates,phi_a=-np.pi/4,phi_b=np.pi/4,tol=np.pi/90):
     dists = []
     x,y = preprocess(x,y,size,N)
     for clsid,ds in templates.iteritems():

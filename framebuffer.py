@@ -8,23 +8,23 @@ class FrameBufferBase(object):
 
     @abstractmethod
     def read(self):
-        '''
+        """
         Returns the next image in the feed.
 
         If end of feed is reached, an empty numpy array is returned.
-        '''
+        """
         raise NotImplementedError
 
     @abstractmethod
     def close(self):
         raise NotImplementedError
 
-    @abstractmethod        
-    def reset(self):
-        '''
-        If Pre-recorded, resets the stream to the initial frame
-        '''
-        raise NotImplementedError        
+    @abstractmethod
+    def seek(self,offset):
+        """
+        If possible with the current stream, move to new frame index.
+        """
+        raise NotImplementedError
 
     def __iter__(self):
         return self
@@ -36,12 +36,13 @@ class FrameBufferBase(object):
 
 
 class VideoBuffer(FrameBufferBase):
-    '''
+    """
     Wrapper for the opencv video capture interface
-    '''
+    """
     def __init__(self,src,start=None,stop=None,**kwargs):
         self.start = start
         self.stop = stop
+        self._idx = self.start
 
         self.__buff = cv2.VideoCapture(src,**kwargs)
 
@@ -52,19 +53,19 @@ class VideoBuffer(FrameBufferBase):
                 self.stop = int(self.__buff.get(cv2.CAP_PROP_FRAME_COUNT)
                                 +self.__buff.get(cv2.CAP_PROP_POS_FRAMES))
             self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
+            self.live = False
         else:
             self.start = 0
-            self.stop = -2 # '-1' is reserved
+            self.stop = np.inf # '-1' is reserved
+            self.live = True
 
-        self._idx = self.start
+        self._shape = self.__buff.read()[1].shape
+        self.seek()
 
-    def reset(self):
-        self._idx = self.start
-        self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
-
-    # allow user to indirectly access opencv VideoCapture object attributes
-    def __getattr__(self,attr):
-        return getattr(self.__buff, attr)
+    def seek(self,frame_index=None):
+        if not self.live:
+            self._idx = frame_index if frame_index is not None else self.start
+            self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
 
     def read(self):
         if self._idx == self.stop:
@@ -77,14 +78,17 @@ class VideoBuffer(FrameBufferBase):
 
         return np.array([],dtype=np.void)
 
+    def __repr__(self):
+        return "%r (range=%r,shape=%r)" % (self.__buff,(self.start,self.stop),self._shape)
+
     def close(self):
         self.__buff.release()
 
 
 class ImageBuffer(FrameBufferBase):
-    '''
+    """
     Wrapper that uses the opencv imread function to implement a stream of images
-    '''
+    """
     def __init__(self,src,start=None,stop=None,**kwargs):
         self.start = start
         self.stop = stop
@@ -95,8 +99,8 @@ class ImageBuffer(FrameBufferBase):
         if self.start is None: self.start = 0
         self._idx = self.start
 
-    def reset(self):
-        self._idx = self.start
+    def seek(self,frame_index=None):
+        self._idx = frame_index if frame_index is not None else self.start
 
     def read(self):
         if self._idx == self.stop:
@@ -105,7 +109,7 @@ class ImageBuffer(FrameBufferBase):
         img = cv2.imread(self.__buff[self._idx],**self.kwargs)
         self._idx += 1
         return img
-            
+
     def close(self):
         self.__buff = []
 
@@ -126,14 +130,12 @@ class FrameBuffer(object):
             buff = VideoBuffer
         self.__cap = buff(src,start,stop,**kwargs)
         self.source = self.__cap
-        self.closed = False
+        self._closed = False
+        self.read = self.__cap.read
 
     def __iter__(self):
-        return self
+        return self.__cap
 
-    def next(self):
-        return self.__cap.next()
-            
     # allow user to indirectly access underlying capture object's attributes
     def __getattr__(self,attr):
         return getattr(self.__cap, attr)
@@ -151,6 +153,6 @@ class FrameBuffer(object):
         self.__cap.close()
 
     def close(self):
-        if not self.closed: self.__cap.close()
-        self.closed = True
-        self.source = self.__cap = None
+        if not self._closed: self.__cap.close()
+        self._closed = True
+        self.source = None
