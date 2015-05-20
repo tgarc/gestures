@@ -42,7 +42,6 @@ class VideoBuffer(FrameBufferBase):
     def __init__(self,src,start=None,stop=None,**kwargs):
         self.start = start
         self.stop = stop
-        self._idx = self.start
 
         self.__buff = cv2.VideoCapture(src,**kwargs)
 
@@ -58,6 +57,7 @@ class VideoBuffer(FrameBufferBase):
             self.start = 0
             self.stop = np.inf # '-1' is reserved
             self.live = True
+        self._idx = self.start
 
         self._shape = self.__buff.read()[1].shape
         self.seek()
