@@ -1,5 +1,6 @@
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+mpl.use("TkAgg")
+import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import numpy as np
 

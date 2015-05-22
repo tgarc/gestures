@@ -2,8 +2,6 @@ import sys
 import cv2
 import h5py
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import framebuffer as fb
 from gesture_classifier import dollar
 import time
@@ -12,8 +10,6 @@ from config import alpha, T0, scale, samplesize
 from gui import DemoGUI
 import signal
 from hrsm import HandGestureRecognizer
-
-mpl.use("TkAgg")
 
 krn = np.ones((3,3),dtype=np.uint8)
 krn2 = np.ones((5,5),dtype=np.uint8)
