@@ -5,6 +5,15 @@ import matplotlib as mpl
 import gestures.framebuffer as fb
 import cv2
 
+# ---
+from scipy.stats import multivariate_normal as mvn
+cov = np.array([[ 113.55502511,  -73.84680762],
+                [ -73.84680762,   75.83236121]])
+
+mu = np.array([ 155.20978977,  104.60955366])
+gm = mvn(mean=mu,cov=cov)
+thresh = 0.0010506537825898023
+
 # Do some command line parsing
 # ------------------------------
 from glob import glob
@@ -36,10 +45,12 @@ try:
     axes['skin'].imshow(curr)
 
     for curr in cap:
-        cimg = cv2.cvtColor(curr,cv2.COLOR_BGR2YCR_CB)
-        y,cr,cb = cimg[:,:,0], cimg[:,:,1], cimg[:,:,2]
-        mask = (60 <= cb)&(cb <= 90)
-        mask &= (165 <= cr)&(cr <= 195)
+        ycc = cv2.cvtColor(curr,cv2.COLOR_BGR2YCR_CB)
+        
+        mask = gm.pdf(ycc[...,1:]).reshape(ycc.shape[:2]) > 0.25*thresh
+        # y,cr,cb = cimg[:,:,0], cimg[:,:,1], cimg[:,:,2]
+        # mask = (60 <= cb)&(cb <= 90)
+        # mask &= (165 <= cr)&(cr <= 195)
 
         dispimg = curr.copy()
         dispimg[~mask,:] = 0
