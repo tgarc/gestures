@@ -54,4 +54,4 @@ class MeanShiftTracker(object):
             mask = mask[y:y+h,x:x+w]
 
         self.hist = cv2.calcHist([roi], self.chans, mask, self.nbins, self.ranges)
-        cv2.normalize(self.hist, self.hist, 0, 255, cv2.NORM_MINMAX)        
+        cv2.normalize(self.hist, self.hist, 0, 255, cv2.NORM_MINMAX)

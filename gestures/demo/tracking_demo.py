@@ -5,7 +5,7 @@ import numpy as np
 
 from gestures.demo.hrsm import HandGestureRecognizer
 from gestures.demo.gui import DemoGUI
-import gestures.demo.common as cmn
+import gestures.core.common as cmn
 
 from gestures.config import alpha, T0, scale, samplesize
 from gestures.gesture_classifier import dollar

@@ -26,6 +26,7 @@ class GaussianSkinSegmenter(object):
         for k in set(('mu','cov','threshold')).intersection(params.keys()):
             setattr(self,k,params[k])
         self.model = mvn(mean=self.mu,cov=self.cov)
+        self.backproject = None
 
     @property
     def params(self):
@@ -34,5 +35,6 @@ class GaussianSkinSegmenter(object):
     def __call__(self,*args,**kwargs):
         return self.segment(*args,**kwargs)
 
-    def segment(self,ycc):
-        return self.model.pdf(ycc[...,1:]).reshape(ycc.shape[:2]) > self.threshold
+    def segment(self,ycc,scale=1):
+        self.backproject = self.model.pdf(ycc[...,1:]).reshape(ycc.shape[:2])
+        return self.backproject > scale*self.threshold

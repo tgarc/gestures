@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from gestures.core.common import findBBoxCoM
 
 class MotionSegmenter(object):
     '''
@@ -27,6 +28,10 @@ class MotionSegmenter(object):
 
         self.background = prev.copy()
         self._buff = (prev,curr)
+        self.backproject = None
+        self.bbox = None
+        self.com = None
+        self.mkernel = np.ones((3,3),dtype=np.uint8)
 
     @property
     def params(self):
@@ -35,12 +40,28 @@ class MotionSegmenter(object):
     def __call__(self,*args,**kwargs):
         return self.segment(*args,**kwargs)
 
-    def segment(self,img):
+    def segment(self,img,fill=False):
         prv,cur,nxt = self._buff + (img,)
 
         T = self.T
         bkgnd = self.background
         moving = (cv2.absdiff(prv,nxt) > T) & (cv2.absdiff(cur,nxt) > T)
+
+        cv2.morphologyEx(moving.view(np.uint8),cv2.MORPH_CLOSE,self.mkernel,dst=moving.view(np.uint8))
+
+        # if any motion was found, attempt to fill in the objects detected
+        # TODO: needs to work with multiple independent objects
+        try:
+            self.bbox, self.com = findBBoxCoM(moving)
+        except ValueError:
+            self.bbox = None
+            self.com = None
+        else:
+            if fill:
+                x,y,w,h = self.bbox
+                motionfill = (cv2.absdiff(cur,bkgnd) > 0.1*T)[y:y+h,x:x+w].view(np.uint8)
+                cv2.morphologyEx(motionfill,cv2.MORPH_CLOSE,self.mkernel,dst=motionfill)
+                moving[y:y+h,x:x+w] |= motionfill
 
         # Updating threshold depends on current background model
         # so always update this before updating background
