@@ -6,16 +6,15 @@ nbins = [16,16]
 
 class MeanShiftTracker(object):
     '''
-    A wrapper for the OpenCV implementation of mean shift tracking
+    A wrapper for the OpenCV implementation of mean shift tracking. See opencv
+    docs for more information abouts parameters.
 
     Parameters
     ----------
-    cov : array_like
-        covariance matrix
-    mu : array_like
-        mean vector
-    threshold : float
-        probability threshold to use for segmentation
+    chans : array_like
+    nbins : array_like
+    term_criteria : tuple
+    ranges : array_like
     '''
     nbins = [16,16]
     chans = [1,2]
