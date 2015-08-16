@@ -1,8 +1,6 @@
 import numpy as np
 import cv2
 
-chans = [1,2]
-nbins = [16,16]
 
 class MeanShiftTracker(object):
     '''
