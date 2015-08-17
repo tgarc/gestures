@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from gestures.framebuffer import FrameBuffer
 from gestures.motion_segmentation import MotionSegmenter
-import sys
 
 
 fig, axes = plt.subplots(2,2)
@@ -15,7 +14,7 @@ for k,ax in axes.items(): ax.set_title(k)
 
 get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 
-cap = FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1, *map(int,sys.argv[2:]))
+cap = FrameBuffer.from_argv()
 try:
     blur = lambda x: cv2.blur(x,(7,7),borderType=cv2.BORDER_REFLECT)
 
@@ -23,7 +22,7 @@ try:
     curr = blur(cap.read())
     prevg = cv2.cvtColor(prev,cv2.COLOR_BGR2GRAY)
     currg = cv2.cvtColor(curr,cv2.COLOR_BGR2GRAY)
-    moseg = MotionSegmenter(prevg,currg,alpha=0.5,T0=10)
+    moseg = MotionSegmenter(prevg,currg,dict(alpha=0.1))
 
     axes['raw'].imshow(curr)
     axes['bkgnd'].imshow(currg,cmap=mpl.cm.get_cmap('gray'))

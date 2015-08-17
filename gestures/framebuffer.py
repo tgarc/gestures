@@ -39,6 +39,7 @@ class VideoBuffer(FrameBufferBase):
     """
     Wrapper for the opencv video capture interface
     """
+
     def __init__(self,src,start=None,stop=None,**kwargs):
         self.start = start
         self.stop = stop
@@ -89,6 +90,7 @@ class ImageBuffer(FrameBufferBase):
     """
     Wrapper that uses the opencv imread function to implement a stream of images
     """
+
     def __init__(self,src,start=None,stop=None,**kwargs):
         self.start = start
         self.stop = stop
@@ -115,11 +117,24 @@ class ImageBuffer(FrameBufferBase):
 
         
 class FrameBuffer(object):
+    """
+    FrameBuffer(src[,start], stop, **kwargs)
+
+    Class for handling images, video files, and cameras generically through
+    opencv
+
+    Parameters
+    ----------
+    stop : int or None
+        Starting frame index (not supported when using an iterable source)
+    start : int or None
+        Stopping frame index (not supported when using an iterable source)
+    src : string, array_like
+        Either a single path to a video file or an iterable of paths to
+        image files
+    """
+
     def __init__(self,src,stop=None,start=None,**kwargs):
-        """
-        Class for handling images, video files, and cameras generically through
-        opencv
-        """
         if start is not None: start, stop = stop, start
 
         if hasattr(src,'__iter__'):
@@ -132,6 +147,33 @@ class FrameBuffer(object):
         self.source = self.__cap
         self._closed = False
         self.read = self.__cap.read
+
+    @classmethod
+    def from_argv(cls,stop=None,start=None,**kwargs):
+        '''
+        Convenience method for parsing command line args
+
+        Usage:
+
+        for video
+        <framebuffer-program>.py <device_num> or <file_name>
+
+        for images
+        <framebuffer-program>.py <widlcard_expression>...
+        '''
+        from glob import glob
+        from itertools import chain,imap
+        from sys import argv
+
+        if len(argv)>1:
+            try:
+                src = map(int,argv[1])
+            except ValueError:
+                src = chain.from_iterable(imap(glob,argv[1:]))
+        else:
+            src = -1
+
+        return cls(src,stop=stop,start=start,**kwargs)
 
     def __iter__(self):
         return self.__cap

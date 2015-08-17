@@ -9,13 +9,13 @@ import gestures.core.common as cmn
 
 from gestures.config import alpha, T0, scale, samplesize
 from gestures.gesture_classifier import dollar
-from gestures import framebuffer as fb
+from gestures.framebuffer import FrameBuffer
 
 
 krn = np.ones((3,3),dtype=np.uint8)
 krn2 = np.ones((5,5),dtype=np.uint8)
 
-cap = fb.FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1, *map(int,sys.argv[2:]))
+cap = FrameBuffer.from_argv()
 print cap
     
 imgq = [cap.read()]*3
