@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from gestures.core.framebuffer import FrameBuffer
+from gestures.core.framebuffer import FrameBuffer,ImageBuffer
 from gestures.segmentation import GaussianSkinSegmenter
 import cv2
 from itertools import imap
@@ -25,7 +25,7 @@ try:
     axes['skin'].imshow(curr)
     fig.tight_layout()
 
-    pause = 1 if isinstance(cap.source,fb.ImageBuffer) else 1e-6
+    pause = 1 if isinstance(cap.source,ImageBuffer) else 1e-6
     coseg = GaussianSkinSegmenter(scale=0.25)
     for curr in imap(blur,cap):
         skin = coseg(curr)

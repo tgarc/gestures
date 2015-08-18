@@ -2,7 +2,7 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-from gestures.gesture_classifier import dollar
+from gestures.gesture_classification import dollar
 import gestures.config as cfg
 import sys
 
