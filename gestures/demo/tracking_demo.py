@@ -1,40 +1,15 @@
 #!/usr/bin/python
-import sys
 import cv2
 import numpy as np
 
 from gestures.demo.hrsm import HandGestureRecognizer
 from gestures.demo.gui import DemoGUI
-import gestures.demo.common as cmn
+import gestures.core.common as cmn
 
 from gestures.config import alpha, T0, scale, samplesize
 from gestures.gesture_classifier import dollar
-from gestures import framebuffer as fb
+from gestures.framebuffer import FrameBuffer
 
-
-krn = np.ones((3,3),dtype=np.uint8)
-krn2 = np.ones((5,5),dtype=np.uint8)
-
-cap = fb.FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1, *map(int,sys.argv[2:]))
-print cap
-    
-imgq = [cap.read()]*3
-imgq_g = [cv2.cvtColor(imgq[0],cv2.COLOR_BGR2GRAY)]*3
-imshape = imgq_g[0].shape
-bkgnd = imgq_g[0].copy()
-T = np.ones_like(imgq_g[0])*T0
-
-redraw = False
-artists = []
-gui = DemoGUI(scale,imgq[0].shape,interval=1)
-gui.show()
-
-def cleanup(signal,frame):
-    gui.close()
-    cap.close()
-    sys.exit(0)
-import signal
-signal.signal(signal.SIGINT,cleanup)
 
 # Show preprocessed gesture and closest matching template
 def gesture_match(query,template,score,theta,clsid):
@@ -57,43 +32,33 @@ def gesture_match(query,template,score,theta,clsid):
     print "Class: %s (%.2f)" % (clsid,score)
     print "Npoints:", n
 
+cap = FrameBuffer.from_argv()
+print cap
+    
+blur = lambda x: cv2.blur(x,(7,7),borderType=cv2.BORDER_REFLECT)
+prev = blur(cap.read())
+curr = blur(cap.read())
+prevg = cv2.cvtColor(prev,cv2.COLOR_BGR2GRAY)
+currg = cv2.cvtColor(curr,cv2.COLOR_BGR2GRAY)
+
+gui = DemoGUI(scale,curr.shape,interval=1)
+redraw = False
+artists = []
+gui.show()
+
 import pkg_resources
 templates = pkg_resources.resource_filename('gestures', 'data/templates.hdf5')
-print templates
-hrsm = HandGestureRecognizer(imshape,templates,gesture_match,0)
-for imgq[-1] in cap:
-    redraw = False
-    imgq_g[-1] = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2GRAY)
-    dispimg = imgq[-1].copy()
+hrsm = HandGestureRecognizer(prevg,currg,templates,gesture_match,0)
 
-    # skin segementation
-    img_crcb = cv2.cvtColor(imgq[-1],cv2.COLOR_BGR2YCR_CB)
-    cr,cb = img_crcb[:,:,1], img_crcb[:,:,2]
-    skin = (77 <= cb)&(cb <= 127)
-    skin &= (133 <= cr)&(cr <= 173)
-    # skin = (60 <= cb)&(cb <= 90)
-    # skin &= (165 <= cr)&(cr <= 195)
-    cv2.erode(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
-    cv2.dilate(skin.view(np.uint8),krn,dst=skin.view(np.uint8))
-
-    # motion detection
-    motion = (cv2.absdiff(imgq_g[0],imgq_g[-1]) > T) & (cv2.absdiff(imgq_g[1],imgq_g[-1]) > T)
-    cv2.erode(motion.view(np.uint8),krn,dst=motion.view(np.uint8))
-    cv2.dilate(motion.view(np.uint8),krn2,dst=motion.view(np.uint8))
-    if np.sum(motion):
-        move_bbox, move_com = cmn.findBBoxCoM(motion)
-        x,y,w,h = move_bbox
-
-        # fill in the area inside the boundaries of the motion mask
-        backg = (cv2.absdiff(imgq_g[-1],bkgnd) > T)[y:y+h,x:x+w]
-        cv2.erode(backg.view(np.uint8),krn,dst=backg.view(np.uint8),iterations=1)
-        cv2.dilate(backg.view(np.uint8),krn2,dst=backg.view(np.uint8),iterations=1)
-        motion[y:y+h,x:x+w] |= backg
-    else:
-        move_bbox = 0,0,0,0
+for curr in cap:
+    curr = blur(curr)
+    dispimg = curr.copy()
 
     # Trigger state machine processing
-    hrsm.tick(motion,skin,move_bbox,img_crcb)
+    hrsm.tick(curr)
+
+    motion = hrsm.segmenter.motion
+    skin = hrsm.segmenter.skin
 
     # Update the display image
     if gui.draw_state == 0:
@@ -104,41 +69,33 @@ for imgq[-1] in cap:
         dispimg[motion] = 255
         dispimg[~motion] = 0
     elif gui.draw_state == 3:
-        dispimg = cv2.cvtColor(hrsm.backproject*255,cv2.COLOR_GRAY2BGR)
+        backproject = (hrsm.segmenter.backproject*255).astype(np.uint8)
+        dispimg = cv2.cvtColor(backproject,cv2.COLOR_GRAY2BGR)
     elif gui.draw_state == 4:
-        dispimg = cv2.cvtColor(bkgnd,cv2.COLOR_GRAY2BGR)
+        dispimg = cv2.cvtColor(hrsm.segmenter.moseg.background,cv2.COLOR_GRAY2BGR)
 
-    # add skin and motion bounding box annotations
     if hrsm.state == 'Track':
         if len(hrsm.waypts) == 1: redraw = True
         artists.append((gui.lines['draw'],zip(*list(hrsm.waypts))))
-
-        print "Tracking:",hrsm.track_bbox
-        x,y,w,h = hrsm.track_bbox
-        cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
         cv2.circle(dispimg,hrsm.waypts[-1],5,(0,255,0),thickness=-1)
+    elif hrsm.state == 'Search':
+        color = (255,0,0) # if detected else (0,0,255)
+        cv2.drawContours(dispimg,[hrsm.detector.hull],0,color,3)
+        for pt in hrsm.detector.dpoints:
+            cv2.circle(dispimg,tuple(pt),7,color=color,thickness=2)
+        cv2.drawContours(dispimg,[hrsm.detector.contour],0,(0,255,0),2)
 
-    if np.sum(motion):
-        print "Motion:", move_bbox
-        x,y,w,h = move_bbox
+    if hrsm.state == 'Track':
+        x,y,w,h = hrsm.tracker.bbox
+        cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
+    elif hrsm.segmenter.bbox is not None:
+        x,y,w,h = hrsm.segmenter.bbox
         cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,255,0),thickness=2)
-    artists.append((gui.imdisp,dispimg[:,:,::-1].copy()))
 
     # Update the figure
+    artists.append((gui.imdisp,dispimg[:,:,::-1].copy()))
     gui.update_artists(list(artists),redraw=redraw)
 
-    # Updating threshold depends on current background model
-    # so always update this before updating background
-    T[~motion] = alpha*T[~motion] + (1-alpha)*5*cv2.absdiff(imgq_g[-1],bkgnd)[~motion]
-    # T[motion] = T[motion]
-    T[T<T0] = T0
-
-    bkgnd[~motion] = alpha*bkgnd[~motion] + (1-alpha)*imgq_g[-1][~motion]
-    # bkgnd[motion] = bkgnd[motion]
-
-    # shift buffer left        
-    imgq[:-1] = imgq[1:] 
-    imgq_g[:-1] = imgq_g[1:]
     artists = [] # empty the artists bucket
     redraw = False
     

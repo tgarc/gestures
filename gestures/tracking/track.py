@@ -6,22 +6,8 @@ import gestures.framebuffer as fb
 from mean_shift_tracker import MeanShiftTracker
 import cv2
 
-# Do some command line parsing
-# ------------------------------
-from glob import glob
-import sys
-if len(sys.argv)>1:
-    try:
-        args = [int(sys.argv[1])]
-    except ValueError:
-        args = glob(sys.argv[1])
-    if len(args) == 1: args = args[0]
-else:
-    args = -1
-# ------------------------------
 
-
-class MeanShiftApp(object):
+class App(object):
     def __init__(self,img,callback):
         fig, axes = plt.subplots(1,2)
         axes = dict(zip(['raw','backproject'],axes.ravel()))
@@ -67,11 +53,11 @@ class MeanShiftApp(object):
         plt.close(self.fig)
 
 
-cap = fb.FrameBuffer(args, *map(int,sys.argv[2:]))
+cap = fb.FrameBuffer.from_argv()
 try:
     curr = cap.read()
     mstrk = MeanShiftTracker()
-    app = MeanShiftApp(curr, lambda bbox: mstrk.init(curr,bbox))
+    app = App(curr, lambda bbox: mstrk.init(curr,bbox))
 
     get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 

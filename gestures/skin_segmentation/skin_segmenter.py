@@ -1,9 +1,10 @@
+from gestures.core.processor import Processor
 import numpy as np
 import cv2
-
 from scipy.stats import multivariate_normal as mvn
 
-class GaussianSkinSegmenter(object):
+
+class GaussianSkinSegmenter(Processor):
     '''
     A Gaussian YCrCb skin color model
 
@@ -16,23 +17,30 @@ class GaussianSkinSegmenter(object):
     threshold : float
         probability threshold to use for segmentation
     '''
-    cov = np.array([[ 113.55502511,  -73.84680762],
-                    [ -73.84680762,   75.83236121]])
 
-    mu = np.array([ 155.20978977,  104.60955366])
-    threshold = 0.0010506537825898023
+    _params = {'cov' : np.array([[ 113.55502511,  -73.84680762],
+                                 [ -73.84680762,   75.83236121]])
+               ,'mu' : np.array([ 155.20978977,  104.60955366])
+               ,'threshold' : 0.0010506537825898023}
 
-    def __init__(self,**params):
-        for k in set(('mu','cov','threshold')).intersection(params.keys()):
-            setattr(self,k,params[k])
+    def __init__(self,scale=1,model_params={}):
+        super(self.__class__, self).__init__(self.segment,**model_params)
+
         self.model = mvn(mean=self.mu,cov=self.cov)
+        self.backproject = None
+        self.threshold = scale*self.threshold
 
-    @property
-    def params(self):
-        return {'mu':self.mu,'cov':self.cov,'threshold':self.threshold}
+    def segment(self,img):
+        '''
+        Parameters
+        ----------
+        img : array_like
+            RGB color image in BGR channel order
+        '''
+        ycc = cv2.cvtColor(img,cv2.COLOR_BGR2YCR_CB)
 
-    def __call__(self,*args,**kwargs):
-        return self.segment(*args,**kwargs)
+        self.backproject = self.model.pdf(ycc[...,1:]).reshape(ycc.shape[:2])
 
-    def segment(self,ycc):
-        return self.model.pdf(ycc[...,1:]).reshape(ycc.shape[:2]) > self.threshold
+        mask = self.backproject > self.threshold
+        cv2.medianBlur(mask.view(np.uint8),3,dst=mask.view(np.uint8))
+        return mask
