@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from gestures.framebuffer import FrameBuffer
 from gestures.motion_segmentation import MotionSegmenter
-
+from itertools import imap
 
 fig, axes = plt.subplots(2,2)
 axes = dict(zip(['raw','bkgnd','thresh','moving'],axes.ravel()))
@@ -30,26 +30,15 @@ try:
     axes['thresh'].imshow(currg,cmap=mpl.cm.get_cmap('gray'))
     fig.tight_layout()
 
-    rownums = np.arange(currg.shape[0],dtype=int).reshape(-1,1)
-    colnums = np.arange(currg.shape[1],dtype=int).reshape(1,-1)
-
-    curr = blur(cap.read())
-    while plt.pause(1e-6) is None and curr.size:
+    for curr in imap(blur,cap):
         moving = moseg(cv2.cvtColor(curr,cv2.COLOR_BGR2GRAY))
+        dispimg = curr
 
         # estimate centroid and bounding box
-        area = np.sum(moving)
-        dispimg = curr.copy()
-        if area > 10:
-            mov_cols = moving*colnums
-            mov_rows = moving*rownums
-            x = np.sum(mov_cols) / area
-            y = np.sum(mov_rows) / area
-            x0,x1 = np.min(mov_cols[moving]), np.max(mov_cols[moving])
-            y0,y1 = np.min(mov_rows[moving]), np.max(mov_rows[moving])
-
+        if moseg.bbox is not None:
+            x,y,w,h = moseg.bbox
             cv2.circle(dispimg,(x,y),5,color=(0,255,0),thickness=-1)
-            cv2.rectangle(dispimg,(x0,y0),(x1,y1),color=(0,204,255),thickness=2)
+            cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
 
         get_imdisp(axes['raw']).set_data(dispimg[:,:,::-1])
         get_imdisp(axes['bkgnd']).set_data(moseg.background)
@@ -57,7 +46,7 @@ try:
         get_imdisp(axes['thresh']).set_data(moseg.T)
         for ax in axes.values(): fig.canvas.blit(ax.bbox)
 
-        curr = blur(cap.read())
+        plt.pause(1e-6)
 except KeyboardInterrupt:
     pass
 finally:

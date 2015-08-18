@@ -26,14 +26,20 @@ class MotionSegmenter(Processor):
 
         self.T = np.ones_like(prev)*self.T0
 
-        self.background = prev.copy()
+        self.background = np.zeros_like(prev)
+
         self._buff = (prev,curr)
-        self.backproject = None
         self.bbox = None
         self.com = None
 
-    def segment(self,img,fill=False):
-        self.bbox = self.com = self.backproject = None
+    def segment(self,img):
+        '''
+        Parameters
+        ----------
+        img : array_like
+            Grayscale image
+        '''
+        self.bbox = self.com = None
 
         prv,cur,nxt = self._buff + (img,)
 
@@ -60,6 +66,5 @@ class MotionSegmenter(Processor):
         bkgnd[moving] = nxt[moving]
 
         self._buff = (cur,nxt)
-        self.backproject = moving
         
         return moving

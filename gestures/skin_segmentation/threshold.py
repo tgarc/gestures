@@ -5,6 +5,7 @@ import matplotlib as mpl
 import gestures.framebuffer as fb
 from skin_segmenter import GaussianSkinSegmenter
 import cv2
+from itertools import imap
 
 
 fig = plt.figure()
@@ -15,6 +16,7 @@ axes['skin'] = fig.add_subplot(212)
 for k,ax in axes.items(): ax.set_title(k)
 
 get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
+blur = lambda x: cv2.blur(x,(9,9),borderType=cv2.BORDER_REFLECT)
 
 cap = fb.FrameBuffer.from_argv()
 try:
@@ -25,9 +27,8 @@ try:
 
     pause = 1 if isinstance(cap.source,fb.ImageBuffer) else 1e-6
     coseg = GaussianSkinSegmenter(scale=0.25)
-    for curr in cap:
-        smoothed = cv2.blur(curr,(7,7),borderType=cv2.BORDER_REFLECT)
-        skin = coseg(cv2.cvtColor(smoothed,cv2.COLOR_BGR2YCR_CB))
+    for curr in imap(blur,cap):
+        skin = coseg(curr)
 
         dispimg = curr.copy()
         if skin.size:

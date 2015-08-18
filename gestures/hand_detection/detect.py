@@ -7,6 +7,7 @@ from gestures.framebuffer import FrameBuffer
 from gestures.core.common import findBBoxCoM
 from gestures.hand_detection import ConvexityHandDetector
 from gestures.skin_segmentation import GaussianSkinSegmenter
+from itertools import imap
 
 
 class App(object):
@@ -45,12 +46,12 @@ try:
 
     curr = blur(cap.read())
     app = App(curr)
-    while plt.pause(1e-6) is None and curr.size:
+    for curr in imap(blur,cap):
         dispimg = curr.copy()
-        mask = smseg(cv2.cvtColor(curr,cv2.COLOR_BGR2YCR_CB))
+        mask = smseg(curr)
 
-        detected = hdetect(mask.view(np.uint8))
-        if mask.size and detected:
+        detected = hdetect(mask)
+        if detected:
             hull_pts = hdetect.hull
             com = (np.sum(hull_pts[:,0,:],axis=0,dtype=float)/len(hull_pts)).astype(int)
             cv2.circle(dispimg,tuple(com),5,color=(0,255,0),thickness=-1)
@@ -59,15 +60,13 @@ try:
         cv2.drawContours(dispimg,[hdetect.hull],0,color,3)
         for pt in hdetect.dpoints:
             cv2.circle(dispimg,tuple(pt),7,color=color,thickness=2)
-
         cv2.drawContours(dispimg,[hdetect.contour],0,(0,255,0),2)
 
         get_imdisp(app.axes['raw']).set_data(dispimg[:,:,::-1])
-        if mask.size:
-            get_imdisp(app.axes['skin']).set_data(mask*255)
+        get_imdisp(app.axes['skin']).set_data(mask*255)
         app.draw()
 
-        curr = blur(cap.read())
+        plt.pause(1e-6)
 except KeyboardInterrupt:
     pass
 finally:

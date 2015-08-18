@@ -6,8 +6,7 @@ import matplotlib as mpl
 from gestures.framebuffer import FrameBuffer
 from gestures.core.common import findBBoxCoM
 from gestures.fused_segmentation import SkinMotionSegmenter
-import sys
-
+from itertools import imap
 
 class App(object):
     def __init__(self,img):
@@ -33,7 +32,7 @@ class App(object):
 
 get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 
-cap = FrameBuffer(sys.argv[1] if len(sys.argv)>1 else -1, *map(int,sys.argv[2:]))
+cap = FrameBuffer.from_argv()
 try:
     blur = lambda x: cv2.blur(x,(9,9),borderType=cv2.BORDER_REFLECT)
 
@@ -45,7 +44,7 @@ try:
 
     curr = blur(cap.read())
     app = App(curr)
-    while plt.pause(1e-6) is None and curr.size:
+    for curr in imap(blur,cap):
         mask = smseg(curr)
         dispimg = curr.copy()
 
@@ -53,19 +52,17 @@ try:
             x,y,w,h = smseg.bbox
             cv2.circle(dispimg,tuple(smseg.com),5,color=(0,255,0),thickness=-1)
             cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
-        else:
-            mask = dispimg*0
 
         skinbackproject = cv2.normalize(smseg.coseg.backproject,alpha=0,beta=255,norm_type=cv2.NORM_MINMAX)
+        fusebackproject = cv2.normalize(smseg.backproject,alpha=0,beta=255,norm_type=cv2.NORM_MINMAX)
 
         get_imdisp(app.axes['raw']).set_data(dispimg[:,:,::-1])
-        get_imdisp(app.axes['moving']).set_data(smseg.moseg.backproject*255)
-        get_imdisp(app.axes['skin']).set_data(skinbackproject)
-        get_imdisp(app.axes['fused']).set_data(mask*255)
-
+        get_imdisp(app.axes['moving']).set_data(smseg.motion*255)
+        get_imdisp(app.axes['skin']).set_data(skinbackproject.astype(np.uint8))
+        get_imdisp(app.axes['fused']).set_data(fusebackproject.astype(np.uint8))
         app.draw()
 
-        curr = blur(cap.read())
+        plt.pause(1e-6)
 except KeyboardInterrupt:
     pass
 finally:

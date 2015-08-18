@@ -19,30 +19,29 @@ class SkinMotionSegmenter(Processor):
 
         self.coseg = GaussianSkinSegmenter(scale=scale,model_params=skin_params)
         self.moseg = MotionSegmenter(prev,curr,model_params=motion_params)
-        self.backproject = None
+
         self.bbox = None
         self.com = None
+        self.backproject = None
+        self.skin = self.motion = np.zeros_like(prev)
 
-    def segment(self,img,fill=False):
-        self.bbox = self.com = self.backproject = None
+    def segment(self,img):
+        self.bbox = self.com = None
+
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-        ycc = cv2.cvtColor(img,cv2.COLOR_BGR2YCR_CB)
+        self.motion = self.moseg.segment(gray)
+        self.skin = self.coseg.segment(img)
 
-        motion = self.moseg.segment(gray,fill=fill)
         if self.moseg.bbox is None:
-            return np.array([])
+            return self.motion
+
         x,y,w,h = self.moseg.bbox
-
-        skin = self.coseg.segment(ycc)
         sprobImg = cv2.normalize(self.coseg.backproject,alpha=0,beta=1,norm_type=cv2.NORM_MINMAX)
-
-        self.backproject = np.zeros_like(gray,dtype=float)
-        self.backproject[y:y+h,x:x+w] = 0.5*sprobImg[y:y+h,x:x+w] + 0.5*motion[y:y+h,x:x+w]
+        self.backproject = 0.5*sprobImg + 0.5*self.motion
 
         fused = np.zeros_like(gray,dtype=bool)
-        fused[y:y+h,x:x+w] = skin[y:y+h,x:x+w] # | motion[y:y+h,x:x+w]
-
+        fused[y:y+h,x:x+w] = self.skin[y:y+h,x:x+w] # | motion[y:y+h,x:x+w]
         if fused.any():
             self.bbox,self.com = findBBoxCoM(fused)
-        
+
         return fused

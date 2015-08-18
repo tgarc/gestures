@@ -25,11 +25,11 @@ class MeanShiftTracker(Processor):
         super(self.__class__, self).__init__(self.track,**model_params)
 
         self.bbox = None
-        self.hist = np.zeros(nbins,dtype=int)
+        self.hist = np.zeros(self.nbins,dtype=int)
         self.backproject = None
 
     def track(self,img,mask=None):
-        self.backproject = cv2.calcBackProject([img],chans,self.hist,self.ranges,1)
+        self.backproject = cv2.calcBackProject([img],self.chans,self.hist,self.ranges,1)
         if mask is not None: 
             self.backproject &= mask
 

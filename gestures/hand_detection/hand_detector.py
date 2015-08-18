@@ -43,17 +43,17 @@ class ConvexityHandDetector(Processor):
         detected : bool
             Returns a binary decision of whether a definite hand match was found.
         '''
+        detected = False
         self.hull = self.dpoints = self.contour = np.array([])
 
-        contours,hierarchy = cv2.findContours(bimg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours,hierarchy = cv2.findContours(bimg.view(np.uint8),cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         if len(contours) == 0:
-            return False
+            return detected
 
         cntlens = np.array(map(len,contours))
         contours = np.array(contours)
         max_dpoints = []
-        detected = False
         for cnt in contours[cntlens > 0.5*np.max(cntlens)]:
             hull_idx = cv2.convexHull(cnt,returnPoints=False)
             if len(hull_idx) <= 3: 

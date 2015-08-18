@@ -30,7 +30,15 @@ class GaussianSkinSegmenter(Processor):
         self.backproject = None
         self.threshold = scale*self.threshold
 
-    def segment(self,ycc):
+    def segment(self,img):
+        '''
+        Parameters
+        ----------
+        img : array_like
+            RGB color image in BGR channel order
+        '''
+        ycc = cv2.cvtColor(img,cv2.COLOR_BGR2YCR_CB)
+
         self.backproject = self.model.pdf(ycc[...,1:]).reshape(ycc.shape[:2])
 
         mask = self.backproject > self.threshold

@@ -2,6 +2,11 @@ import cv2
 import numpy as np
 from abc import ABCMeta, abstractmethod
 
+try:
+    from cv2 import (CAP_PROP_POS_FRAMES,CAP_PROP_FRAME_COUNT)
+except ImportError: # v < 3.0
+    from cv2.cv import (CV_CAP_PROP_POS_FRAMES as CAP_PROP_POS_FRAMES
+                        , CV_CAP_PROP_FRAME_COUNT as CAP_PROP_FRAME_COUNT)
 
 class FrameBufferBase(object):
     __metaclass__ = ABCMeta
@@ -48,11 +53,11 @@ class VideoBuffer(FrameBufferBase):
 
         if isinstance(src,basestring):
             if self.start is None:
-                self.start = int(self.__buff.get(cv2.CAP_PROP_POS_FRAMES))
+                self.start = int(self.__buff.get(CAP_PROP_POS_FRAMES))
             if self.stop is None:
-                self.stop = int(self.__buff.get(cv2.CAP_PROP_FRAME_COUNT)
-                                +self.__buff.get(cv2.CAP_PROP_POS_FRAMES))
-            self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
+                self.stop = int(self.__buff.get(CAP_PROP_FRAME_COUNT)
+                                +self.__buff.get(CAP_PROP_POS_FRAMES))
+            self.__buff.set(CAP_PROP_POS_FRAMES, self.start)
             self.live = False
         else:
             self.start = 0
@@ -66,7 +71,7 @@ class VideoBuffer(FrameBufferBase):
     def seek(self,frame_index=None):
         if not self.live:
             self._idx = frame_index if frame_index is not None else self.start
-            self.__buff.set(cv2.CAP_PROP_POS_FRAMES, self.start)
+            self.__buff.set(CAP_PROP_POS_FRAMES, self.start)
 
     def read(self):
         if self._idx == self.stop:
@@ -165,11 +170,13 @@ class FrameBuffer(object):
         from itertools import chain,imap
         from sys import argv
 
-        if len(argv)>1:
+        if len(argv)>2:
+            src = chain.from_iterable(imap(glob,argv[1:]))
+        elif len(argv)>1:
             try:
-                src = map(int,argv[1])
+                src = int(argv[1])
             except ValueError:
-                src = chain.from_iterable(imap(glob,argv[1:]))
+                src = argv[1]
         else:
             src = -1
 
