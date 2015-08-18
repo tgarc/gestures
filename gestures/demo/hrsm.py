@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 import h5py
 
-from gestures.gesture_classifier import dollar
-from gestures.fused_segmentation import SkinMotionSegmenter
+from gestures.gesture_classification import dollar
+from gestures.segmentation import SkinMotionSegmenter
 from gestures.hand_detection import ConvexityHandDetector
 from gestures.tracking import MeanShiftTracker
 from gestures.config import scale, samplesize

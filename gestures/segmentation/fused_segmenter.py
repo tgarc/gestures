@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
-from gestures.skin_segmentation import GaussianSkinSegmenter
-from gestures.motion_segmentation import MotionSegmenter
+from skin_segmenter import GaussianSkinSegmenter
+from motion_segmenter import MotionSegmenter
 from gestures.core.common import findBBoxCoM
 from gestures.core.processor import Processor
 

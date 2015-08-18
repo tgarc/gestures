@@ -3,9 +3,9 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from gestures.framebuffer import FrameBuffer
+from gestures.core.framebuffer import FrameBuffer
 from gestures.core.common import findBBoxCoM
-from gestures.fused_segmentation import SkinMotionSegmenter
+from gestures.segmentation import SkinMotionSegmenter
 from itertools import imap
 
 class App(object):

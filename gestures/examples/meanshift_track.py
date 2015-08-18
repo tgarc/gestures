@@ -2,8 +2,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import gestures.framebuffer as fb
-from mean_shift_tracker import MeanShiftTracker
+from gestures.core.framebuffer import FrameBuffer
+from gestures.tracking import MeanShiftTracker
 import cv2
 
 
@@ -53,7 +53,7 @@ class App(object):
         plt.close(self.fig)
 
 
-cap = fb.FrameBuffer.from_argv()
+cap = FrameBuffer.from_argv()
 try:
     curr = cap.read()
     mstrk = MeanShiftTracker()

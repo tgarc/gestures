@@ -3,10 +3,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from gestures.framebuffer import FrameBuffer
+from gestures.core.framebuffer import FrameBuffer
 from gestures.core.common import findBBoxCoM
 from gestures.hand_detection import ConvexityHandDetector
-from gestures.skin_segmentation import GaussianSkinSegmenter
+from gestures.segmentation import GaussianSkinSegmenter
 from itertools import imap
 
 

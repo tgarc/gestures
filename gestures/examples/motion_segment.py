@@ -3,8 +3,8 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from gestures.framebuffer import FrameBuffer
-from gestures.motion_segmentation import MotionSegmenter
+from gestures.core.framebuffer import FrameBuffer
+from gestures.segmentation import MotionSegmenter
 from itertools import imap
 
 fig, axes = plt.subplots(2,2)

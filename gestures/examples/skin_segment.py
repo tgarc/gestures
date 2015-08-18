@@ -2,8 +2,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import gestures.framebuffer as fb
-from skin_segmenter import GaussianSkinSegmenter
+from gestures.core.framebuffer import FrameBuffer
+from gestures.segmentation import GaussianSkinSegmenter
 import cv2
 from itertools import imap
 
@@ -18,7 +18,7 @@ for k,ax in axes.items(): ax.set_title(k)
 get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 blur = lambda x: cv2.blur(x,(9,9),borderType=cv2.BORDER_REFLECT)
 
-cap = fb.FrameBuffer.from_argv()
+cap = FrameBuffer.from_argv()
 try:
     curr = cap.read()
     axes['raw'].imshow(curr)

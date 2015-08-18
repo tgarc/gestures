@@ -4,11 +4,9 @@ import numpy as np
 
 from gestures.demo.hrsm import HandGestureRecognizer
 from gestures.demo.gui import DemoGUI
-import gestures.core.common as cmn
-
 from gestures.config import alpha, T0, scale, samplesize
-from gestures.gesture_classifier import dollar
-from gestures.framebuffer import FrameBuffer
+from gestures.gesture_classification import dollar
+from gestures.core.framebuffer import FrameBuffer
 
 
 # Show preprocessed gesture and closest matching template
