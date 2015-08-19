@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 
 
-class MeanShiftTracker(Processor):
+class CrCbMeanShiftTracker(Processor):
     '''
     A wrapper for the OpenCV implementation of mean shift tracking. See opencv
     docs for more information abouts parameters.
@@ -26,14 +26,14 @@ class MeanShiftTracker(Processor):
 
         self.bbox = None
         self.hist = np.zeros(self.nbins,dtype=int)
-        self.backproject = None
+        self.backprojection = None
 
     def track(self,img,mask=None):
-        self.backproject = cv2.calcBackProject([img],self.chans,self.hist,self.ranges,1)
+        self.backprojection = cv2.calcBackProject([img],self.chans,self.hist,self.ranges,1)
         if mask is not None: 
-            self.backproject &= mask
+            self.backprojection *= mask # this is way faster than x[~mask] = 0
 
-        niter, self.bbox = cv2.meanShift(self.backproject,self.bbox,self.term_criteria)
+        niter, self.bbox = cv2.meanShift(self.backprojection,self.bbox,self.term_criteria)
 
         return self.bbox
 

@@ -7,7 +7,7 @@ from gestures.demo.gui import DemoGUI
 from gestures.config import alpha, T0, scale, samplesize
 from gestures.gesture_classification import dollar
 from gestures.core.framebuffer import FrameBuffer
-
+from itertools import imap
 
 # Show preprocessed gesture and closest matching template
 def gesture_match(query,template,score,theta,clsid):
@@ -33,7 +33,7 @@ def gesture_match(query,template,score,theta,clsid):
 cap = FrameBuffer.from_argv()
 print cap
     
-blur = lambda x: cv2.blur(x,(7,7),borderType=cv2.BORDER_REFLECT)
+blur = lambda x: cv2.blur(x,(7,7),borderType=cv2.BORDER_REFLECT,dst=x)
 prev = blur(cap.read())
 curr = blur(cap.read())
 prevg = cv2.cvtColor(prev,cv2.COLOR_BGR2GRAY)
@@ -48,8 +48,7 @@ import pkg_resources
 templates = pkg_resources.resource_filename('gestures', 'data/templates.hdf5')
 hrsm = HandGestureRecognizer(prevg,currg,templates,gesture_match,0)
 
-for curr in cap:
-    curr = blur(curr)
+for curr in imap(blur,cap):
     dispimg = curr.copy()
 
     # Trigger state machine processing
@@ -62,13 +61,11 @@ for curr in cap:
     if gui.draw_state == 0:
         dispimg = dispimg
     elif gui.draw_state == 1:
-        dispimg[~skin] = 0
+        dispimg *= skin[...,None] # simply a way to broadcast multiply on three channels
     elif gui.draw_state == 2:
-        dispimg[motion] = 255
-        dispimg[~motion] = 0
+        dispimg *= motion[...,None]
     elif gui.draw_state == 3:
-        backproject = (hrsm.segmenter.backproject*255).astype(np.uint8)
-        dispimg = cv2.cvtColor(backproject,cv2.COLOR_GRAY2BGR)
+        dispimg = cv2.cvtColor((hrsm.backprojection*255).astype(np.uint8),cv2.COLOR_GRAY2BGR)
     elif gui.draw_state == 4:
         dispimg = cv2.cvtColor(hrsm.segmenter.moseg.background,cv2.COLOR_GRAY2BGR)
 

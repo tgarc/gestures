@@ -5,8 +5,9 @@ import h5py
 from gestures.gesture_classification import dollar
 from gestures.segmentation import SkinMotionSegmenter
 from gestures.hand_detection import ConvexityHandDetector
-from gestures.tracking import MeanShiftTracker
+from gestures.tracking import CrCbMeanShiftTracker
 from gestures.config import scale, samplesize
+from gestures.core.common import findBBoxCoM_contour,findBBoxCoM
 from abc import ABCMeta, abstractmethod
 
 
@@ -78,11 +79,17 @@ class HandGestureRecognizer(StateMachineBase):
 
         self.segmenter = SkinMotionSegmenter(prev,curr,scale=0.25)
         self.detector = ConvexityHandDetector()
-        self.tracker = MeanShiftTracker()
+        self.tracker = CrCbMeanShiftTracker()
 
         self.imshape = prev.shape
         self.counter = 0
         self.waypts = []
+
+    @property
+    def backprojection(self):
+        if self.state == 'Track' and self.tracker.backprojection is not None:
+            return self.tracker.backprojection
+        return self.segmenter.backprojection
 
     def Wait(self,img):
         self.counter = (self.counter+1) % WAIT_PERIOD
@@ -90,12 +97,26 @@ class HandGestureRecognizer(StateMachineBase):
             return self.Search
 
     def Search(self,img):
-        mask = self.segmenter(img)
-        if mask.size and self.detector(mask):
-            return self.Validate
+        mask = self.segmenter.segment(img)
+        if self.detector(mask):
+            # return self.Validate
+            bbox,com = findBBoxCoM_contour(self.detector.contour)
+
+            # use the hand contour to draw out a more precise mask of the crcb
+            # image
+            mask = np.zeros_like(mask)
+            cv2.drawContours(mask.view(np.uint8),[self.detector.contour],0,1,thickness=-1)
+            colorimg = self.segmenter.coseg.converted_image * mask.reshape(mask.shape+(1,))
+
+            self.tracker.init(colorimg,bbox)
+            self.waypts = [com]
+            self.tracker.backprojection = mask # this is a dirty little trick >:)
+
+            return self.Track
+
 
     def Validate(self,img):
-        mask = self.segmenter(img)
+        mask = self.segmenter.segment(img)
 
         if not self.detector(mask):
             self.counter = 0
@@ -104,18 +125,20 @@ class HandGestureRecognizer(StateMachineBase):
         self.counter = (self.counter+1) % VAL_PERIOD
 
         if self.counter == 0:
-            self.tracker.init(img,self.segmenter.bbox)
-            self.waypts = [self.segmenter.com]
+            bbox,com = findBBoxCoM_contour(self.detector.contour)
+            self.tracker.init(self.segmenter.coseg.converted_image,bbox)
+            self.waypts = [com]
 
             return self.Track
             
     def Track(self,img):
-        mask = self.segmenter(img)
+        mask = self.segmenter.segment(img)
 
-        if np.sum(mask) > 100:
-            # probably needs some error checking here
-            x,y,w,h = self.tracker.track(img)
-            self.waypts.append((x+w//2,y+h//2))
+        # probably needs some error checking here in case tracking fails
+        if np.sum(mask) > 500:
+            x,y,w,h = self.tracker.track(self.segmenter.coseg.converted_image,mask=mask)
+            bbox,(xc,yc) = findBBoxCoM(self.tracker.backprojection)
+            self.waypts.append((int(xc),int(yc)))
         else:
             if len(self.waypts) > MINWAYPTS and self.callback is not None:
                 # Find best gesture match

@@ -7,23 +7,27 @@ from gestures.core.processor import Processor
 
 class SkinMotionSegmenter(Processor):
     '''
-    Hand detector basecd on finding convexity defects of blobs in a binary image
+    Blends skin and motion segmentation together to get more accurate
+    segmentation
 
     Parameters
     ----------
+    alpha : float
+        Skin-to-motion blending parameter; i.e., fusion = w*skin + (1-w)*motion
     '''
-    _params = {}
+    _params = {'alpha':0.5}
 
-    def __init__(self,prev,curr,scale=1,skin_params={},motion_params={}):
-        super(self.__class__, self).__init__(self.segment)
+    def __init__(self,prev,curr,scale=1,fusion_params={},skin_params={},motion_params={}):
+        super(self.__class__, self).__init__(self.segment,**fusion_params)
 
         self.coseg = GaussianSkinSegmenter(scale=scale,model_params=skin_params)
         self.moseg = MotionSegmenter(prev,curr,model_params=motion_params)
 
         self.bbox = None
         self.com = None
-        self.backproject = None
-        self.skin = self.motion = np.zeros_like(prev)
+        self.backprojection = None
+        self.skin = None
+        self.motion = None
 
     def segment(self,img):
         self.bbox = self.com = None
@@ -36,11 +40,12 @@ class SkinMotionSegmenter(Processor):
             return self.motion
 
         x,y,w,h = self.moseg.bbox
-        sprobImg = cv2.normalize(self.coseg.backproject,alpha=0,beta=1,norm_type=cv2.NORM_MINMAX)
-        self.backproject = 0.5*sprobImg + 0.5*self.motion
+        sprobImg = cv2.normalize(self.coseg.backprojection[y:y+h,x:x+w],alpha=0,beta=1,norm_type=cv2.NORM_MINMAX)
+        self.backprojection = np.zeros_like(gray,dtype=float)
+        self.backprojection[y:y+h,x:x+w] = self.alpha*sprobImg + (1-self.alpha)*self.motion[y:y+h,x:x+w]
 
         fused = np.zeros_like(gray,dtype=bool)
-        fused[y:y+h,x:x+w] = self.skin[y:y+h,x:x+w] # | motion[y:y+h,x:x+w]
+        fused[y:y+h,x:x+w] = self.skin[y:y+h,x:x+w] | self.motion[y:y+h,x:x+w]
         if fused.any():
             self.bbox,self.com = findBBoxCoM(fused)
 

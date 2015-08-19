@@ -3,21 +3,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from gestures.core.framebuffer import FrameBuffer
-from gestures.tracking import MeanShiftTracker
+from gestures.tracking import CrCbMeanShiftTracker
 import cv2
-
+from itertools import imap
 
 class App(object):
     def __init__(self,img,callback):
         fig, axes = plt.subplots(1,2)
-        axes = dict(zip(['raw','backproject'],axes.ravel()))
+        axes = dict(zip(['raw','backprojection'],axes.ravel()))
 
         self.fig = fig
         self.axes = axes
         for k,ax in self.axes.items(): ax.set_title(k)
 
         axes['raw'].imshow(img)
-        axes['backproject'].imshow(img[...,0],cmap=mpl.cm.get_cmap('gray'))
+        axes['backprojection'].imshow(img[...,0],cmap=mpl.cm.get_cmap('gray'))
         fig.tight_layout()
 
         cid = fig.canvas.mpl_connect('button_press_event', self.on_press)
@@ -56,19 +56,18 @@ class App(object):
 cap = FrameBuffer.from_argv()
 try:
     curr = cap.read()
-    mstrk = MeanShiftTracker()
+    mstrk = CrCbMeanShiftTracker()
     app = App(curr, lambda bbox: mstrk.init(curr,bbox))
-
     get_imdisp = lambda ax: ax.findobj(mpl.image.AxesImage)[0]
 
-    for curr in cap:
-        cv2.blur(curr,(7,7),dst=curr,borderType=cv2.BORDER_REFLECT)
+    blur = lambda x: cv2.blur(x,(7,7),borderType=cv2.BORDER_REFLECT,dst=x)
+    for curr in imap(blur,cap):
         if not app.SELECTING and app.bbox is not None:
             bbox = mstrk.track(curr)
 
         get_imdisp(app.axes['raw']).set_data(curr[:,:,::-1])
-        if mstrk.backproject is not None:
-            get_imdisp(app.axes['backproject']).set_data(mstrk.backproject)
+        if mstrk.backprojection is not None:
+            get_imdisp(app.axes['backprojection']).set_data(mstrk.backprojection)
         app.draw()
 
         plt.pause(1e-6)

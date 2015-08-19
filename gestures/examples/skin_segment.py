@@ -31,10 +31,7 @@ try:
         skin = coseg(curr)
 
         dispimg = curr.copy()
-        if skin.size:
-            dispimg[~skin,:] = 0
-        else:
-            dispimg[...] = 0
+        dispimg *= skin[...,None]
 
         get_imdisp(axes['raw']).set_data(curr[:,:,::-1])
         get_imdisp(axes['skin']).set_data(dispimg[:,:,::-1])

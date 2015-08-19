@@ -52,9 +52,10 @@ class MotionSegmenter(Processor):
         if moving.any():
             self.bbox, self.com = findBBoxCoM(moving)
             x,y,w,h = self.bbox
-            motionfill = (cv2.absdiff(cur,bkgnd) > T)[y:y+h,x:x+w].view(np.uint8)
+            motionfill = cv2.absdiff(nxt[y:y+h,x:x+w],bkgnd[y:y+h,x:x+w]) > self.T0
             moving[y:y+h,x:x+w] |= motionfill
 
+        # TODO replace boolean indexing with boolean multiply where possible
         # Updating threshold depends on current background model
         # so always update this before updating background
         T[~moving] = self.alpha*T[~moving] \

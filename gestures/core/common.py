@@ -15,6 +15,18 @@ def update_imshape(shape):
     __rownums = np.arange(__imshape[0],dtype=int)
     __colnums = np.arange(__imshape[1],dtype=int)
 
+def findBBoxCoM_contour(contour):
+    xpts,ypts = contour.reshape(-1,2).T
+    
+
+    com = np.mean(xpts,dtype=int),np.mean(ypts,dtype=int)
+    x = np.min(xpts)
+    w = np.max(xpts) - x
+    y = np.min(ypts)
+    h = np.max(ypts) - y
+
+    return (x,y,w,h),com
+
 def findBBoxCoM(mask,roi=None):
     if mask.shape != __imshape: update_imshape(mask.shape)
 
@@ -28,11 +40,20 @@ def findBBoxCoM(mask,roi=None):
     maskarea = np.sum(mask)
     if maskarea == 0: raise ValueError("all-zero array passed")
 
+    # broadcast multiply row/col index matrix to get 2D row and column masks
     masked_cols = mask*__colnums[x0:x1].reshape(1,-1)
     masked_rows = mask*__rownums[y0:y1].reshape(-1,1)
-    x0,x1 = np.min(masked_cols[mask]), np.max(masked_cols[mask])+1
-    y0,y1 = np.min(masked_rows[mask]), np.max(masked_rows[mask])+1
+
     xcom = np.sum(masked_cols)//maskarea
     ycom = np.sum(masked_rows)//maskarea
+
+    # now mask out any zero values and select the min and max nonzero row/col
+    # elements as the boundaries
+    if mask.dtype != bool:
+        mask = mask > 0
+    masked_cols = masked_cols[mask]
+    masked_rows = masked_rows[mask]
+    x0,x1 = np.min(masked_cols), np.max(masked_cols)+1
+    y0,y1 = np.min(masked_rows), np.max(masked_rows)+1
 
     return (x0,y0,x1-x0,y1-y0),(xcom,ycom)

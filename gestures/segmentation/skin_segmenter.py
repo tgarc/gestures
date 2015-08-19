@@ -27,7 +27,8 @@ class GaussianSkinSegmenter(Processor):
         super(self.__class__, self).__init__(self.segment,**model_params)
 
         self.model = mvn(mean=self.mu,cov=self.cov)
-        self.backproject = None
+        self.backprojection = None
+        self.converted_image = None
         self.threshold = scale*self.threshold
 
     def segment(self,img):
@@ -37,10 +38,7 @@ class GaussianSkinSegmenter(Processor):
         img : array_like
             RGB color image in BGR channel order
         '''
-        ycc = cv2.cvtColor(img,cv2.COLOR_BGR2YCR_CB)
+        self.converted_image = cv2.cvtColor(img,cv2.COLOR_BGR2YCR_CB)
+        self.backprojection = self.model.pdf(self.converted_image[...,1:]).reshape(img.shape[:2])
 
-        self.backproject = self.model.pdf(ycc[...,1:]).reshape(ycc.shape[:2])
-
-        mask = self.backproject > self.threshold
-        cv2.medianBlur(mask.view(np.uint8),3,dst=mask.view(np.uint8))
-        return mask
+        return self.backprojection > self.threshold

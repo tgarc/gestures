@@ -60,7 +60,7 @@ class DemoGUI(object):
         elif self.draw_state == 2:
             self.axes['raw'].title.set_text('motion')            
         elif self.draw_state == 3:
-            self.axes['raw'].title.set_text('backproject')
+            self.axes['raw'].title.set_text('backprojection')
         elif self.draw_state == 4:
             self.axes['raw'].title.set_text('background')
         self.timer.stop()

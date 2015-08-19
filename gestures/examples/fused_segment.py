@@ -53,8 +53,8 @@ try:
             cv2.circle(dispimg,tuple(smseg.com),5,color=(0,255,0),thickness=-1)
             cv2.rectangle(dispimg,(x,y),(x+w,y+h),color=(0,204,255),thickness=2)
 
-        skinbackproject = cv2.normalize(smseg.coseg.backproject,alpha=0,beta=255,norm_type=cv2.NORM_MINMAX)
-        fusebackproject = cv2.normalize(smseg.backproject,alpha=0,beta=255,norm_type=cv2.NORM_MINMAX)
+        skinbackproject = cv2.normalize(smseg.coseg.backprojection,alpha=0,beta=255,norm_type=cv2.NORM_MINMAX)
+        fusebackproject = cv2.normalize(smseg.backprojection,alpha=0,beta=255,norm_type=cv2.NORM_MINMAX)
 
         get_imdisp(app.axes['raw']).set_data(dispimg[:,:,::-1])
         get_imdisp(app.axes['moving']).set_data(smseg.motion*255)

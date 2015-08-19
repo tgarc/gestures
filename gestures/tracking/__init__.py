@@ -1,1 +1,1 @@
-from mean_shift_tracker import MeanShiftTracker
+from mean_shift_tracker import CrCbMeanShiftTracker
