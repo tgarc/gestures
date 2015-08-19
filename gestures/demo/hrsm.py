@@ -6,23 +6,17 @@ from gestures.gesture_classification import dollar
 from gestures.segmentation import SkinMotionSegmenter
 from gestures.hand_detection import ConvexityHandDetector
 from gestures.tracking import CrCbMeanShiftTracker
-from gestures.config import scale, samplesize
 from gestures.core.common import findBBoxCoM_contour,findBBoxCoM
 from abc import ABCMeta, abstractmethod
 
+from gestures import config
+params = config.get('model_parameters','dollar')
+scale, samplesize = params['scale'], params['samplesize']
 
 # global constants
 WAIT_PERIOD = 5
-VAL_PERIOD = 1
 
-MAXPORTION = 2
-MINSKINPORTION = 8
 MINWAYPTS = 10
-term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
-chans = [1,2]
-ranges = [0, 256, 0, 256]
-nbins = [16,16]
-
 
 class StateMachineBase(object):
     __metaclass__ = ABCMeta
@@ -77,7 +71,7 @@ class HandGestureRecognizer(StateMachineBase):
         else:
             self.template_ds = templates
 
-        self.segmenter = SkinMotionSegmenter(prev,curr,scale=0.25)
+        self.segmenter = SkinMotionSegmenter(prev,curr)
         self.detector = ConvexityHandDetector()
         self.tracker = CrCbMeanShiftTracker()
 
@@ -99,7 +93,6 @@ class HandGestureRecognizer(StateMachineBase):
     def Search(self,img):
         mask = self.segmenter.segment(img)
         if self.detector(mask):
-            # return self.Validate
             bbox,com = findBBoxCoM_contour(self.detector.contour)
 
             # use the hand contour to draw out a more precise mask of the crcb
@@ -114,23 +107,6 @@ class HandGestureRecognizer(StateMachineBase):
 
             return self.Track
 
-
-    def Validate(self,img):
-        mask = self.segmenter.segment(img)
-
-        if not self.detector(mask):
-            self.counter = 0
-            return self.Search
-
-        self.counter = (self.counter+1) % VAL_PERIOD
-
-        if self.counter == 0:
-            bbox,com = findBBoxCoM_contour(self.detector.contour)
-            self.tracker.init(self.segmenter.coseg.converted_image,bbox)
-            self.waypts = [com]
-
-            return self.Track
-            
     def Track(self,img):
         mask = self.segmenter.segment(img)
 

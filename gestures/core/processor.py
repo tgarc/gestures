@@ -1,5 +1,9 @@
+from gestures import config
+
+
 class Processor(object):
     def __init__(self,process,**kwargs):
+        self._params = config.get('model_parameters', self.__class__.__name__)
         self._params.update(kwargs)
 
         for k,v in self._params.items():

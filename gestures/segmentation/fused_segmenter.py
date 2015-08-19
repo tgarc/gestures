@@ -15,12 +15,11 @@ class SkinMotionSegmenter(Processor):
     alpha : float
         Skin-to-motion blending parameter; i.e., fusion = w*skin + (1-w)*motion
     '''
-    _params = {'alpha':0.5}
 
-    def __init__(self,prev,curr,scale=1,fusion_params={},skin_params={},motion_params={}):
+    def __init__(self,prev,curr,fusion_params={},skin_params={},motion_params={}):
         super(self.__class__, self).__init__(self.segment,**fusion_params)
 
-        self.coseg = GaussianSkinSegmenter(scale=scale,model_params=skin_params)
+        self.coseg = GaussianSkinSegmenter(model_params=skin_params)
         self.moseg = MotionSegmenter(prev,curr,model_params=motion_params)
 
         self.bbox = None

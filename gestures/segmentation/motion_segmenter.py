@@ -16,9 +16,6 @@ class MotionSegmenter(Processor):
         Absolute lower threshold for motion. Anything less than this will always
         be ignored.
     '''
-
-    _params = {'alpha' : 0.5, 'T0' : 10}
-
     def __init__(self,prev,curr,model_params={}):
         super(self.__class__, self).__init__(self.segment,**model_params)
 

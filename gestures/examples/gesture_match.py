@@ -3,12 +3,11 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from gestures.gesture_classification import dollar
-import gestures.config as cfg
+from gestures.config import model_parameters as params
+from gestures import config
 import sys
 
-import pkg_resources
-templates = pkg_resources.resource_filename('gestures', 'data/templates.hdf5')
-templates_fh = h5py.File(templates,'r')
+templates_fh = h5py.File(config.get('gesture_templates_file'),'r')
 libras_fh = h5py.File(sys.argv[1],'r')
 
 print """
@@ -20,8 +19,8 @@ Use directional keys to navigate matches
 NSAMPLES = sum(len(ds) for ds in libras_fh.itervalues())
 try:
     CNT   = 0
-    scale = cfg.scale
-    N     = cfg.samplesize
+    scale = params['dollar']['scale']
+    N     = params['dollar']['samplesize']
 
     fig = plt.figure()
     axes = {}
@@ -78,7 +77,5 @@ try:
 except KeyboardInterrupt:
     pass
 finally:
-    fig.canvas.mpl_disconnect(cid)
-    plt.close(fig)
     libras_fh.close()
     templates_fh.close()

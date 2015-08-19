@@ -4,10 +4,13 @@ import numpy as np
 
 from gestures.demo.hrsm import HandGestureRecognizer
 from gestures.demo.gui import DemoGUI
-from gestures.config import alpha, T0, scale, samplesize
 from gestures.gesture_classification import dollar
 from gestures.core.framebuffer import FrameBuffer
 from itertools import imap
+
+from gestures import config
+params = config.get('model_parameters','dollar')
+scale, samplesize = params['scale'], params['samplesize']
 
 # Show preprocessed gesture and closest matching template
 def gesture_match(query,template,score,theta,clsid):

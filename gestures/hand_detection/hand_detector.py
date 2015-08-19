@@ -15,9 +15,6 @@ class ConvexityHandDetector(Processor):
         Lower convexity defect depth threshold (length of fingers) relative to
         largest defect depth.
     '''
-    _params = {'angle_threshold' : ((np.pi/12),(np.pi/4))
-               ,'depth_threshold' : 0.5}
-
     def __init__(self,model_params={}):
         super(self.__class__, self).__init__(self.detect,**model_params)
 

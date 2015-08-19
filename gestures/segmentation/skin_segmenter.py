@@ -18,18 +18,12 @@ class GaussianSkinSegmenter(Processor):
         probability threshold to use for segmentation
     '''
 
-    _params = {'cov' : np.array([[ 113.55502511,  -73.84680762],
-                                 [ -73.84680762,   75.83236121]])
-               ,'mu' : np.array([ 155.20978977,  104.60955366])
-               ,'threshold' : 0.0010506537825898023}
-
-    def __init__(self,scale=1,model_params={}):
+    def __init__(self,model_params={}):
         super(self.__class__, self).__init__(self.segment,**model_params)
 
         self.model = mvn(mean=self.mu,cov=self.cov)
         self.backprojection = None
         self.converted_image = None
-        self.threshold = scale*self.threshold
 
     def segment(self,img):
         '''

@@ -15,12 +15,6 @@ class CrCbMeanShiftTracker(Processor):
     term_criteria : tuple
     ranges : array_like
     '''
-    
-    _params = {'nbins' : [16,16]
-               ,'chans' : [1,2]
-               ,'term_criteria' : ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
-               ,'ranges' : [0, 256, 0, 256]}
-
     def __init__(self,model_params={}):
         super(self.__class__, self).__init__(self.track,**model_params)
 

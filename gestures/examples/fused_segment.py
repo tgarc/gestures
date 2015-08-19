@@ -40,7 +40,7 @@ try:
     curr = blur(cap.read())
     prevg = cv2.cvtColor(prev,cv2.COLOR_BGR2GRAY)
     currg = cv2.cvtColor(curr,cv2.COLOR_BGR2GRAY)
-    smseg = SkinMotionSegmenter(prevg,currg,scale=0.5)
+    smseg = SkinMotionSegmenter(prevg,currg)
 
     curr = blur(cap.read())
     app = App(curr)

@@ -42,7 +42,7 @@ try:
     currg = cv2.cvtColor(curr,cv2.COLOR_BGR2GRAY)
 
     hdetect = ConvexityHandDetector()
-    smseg = GaussianSkinSegmenter(scale=0.25)
+    smseg = GaussianSkinSegmenter()
 
     curr = blur(cap.read())
     app = App(curr)
