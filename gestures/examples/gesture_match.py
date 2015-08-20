@@ -7,7 +7,7 @@ from gestures.config import model_parameters as params
 from gestures import config
 import sys
 
-templates_fh = h5py.File(config.get('gesture_templates_file'),'r')
+templates_fh = h5py.File(config.get('gesture_templates'),'r')
 libras_fh = h5py.File(sys.argv[1],'r')
 
 print """

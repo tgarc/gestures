@@ -47,9 +47,7 @@ redraw = False
 artists = []
 gui.show()
 
-import pkg_resources
-templates = pkg_resources.resource_filename('gestures', 'data/templates.hdf5')
-hrsm = HandGestureRecognizer(prevg,currg,templates,gesture_match,0)
+hrsm = HandGestureRecognizer(prevg,currg,config.get('gesture_templates'),gesture_match,0)
 
 for curr in imap(blur,cap):
     dispimg = curr.copy()

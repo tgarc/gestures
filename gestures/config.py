@@ -45,6 +45,6 @@ model_parameters = {
 
 options = {
 'model_parameters': model_parameters, 
-'gesture_templates_file': pkg_resources.resource_filename('gestures'
-                                                          ,'data/templates.hdf5'),
+'gesture_templates': pkg_resources.resource_filename('gestures'
+                                                     ,'data/templates.hdf5'),
 }
