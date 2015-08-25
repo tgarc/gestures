@@ -39,8 +39,9 @@ class SkinMotionSegmenter(Processor):
             return self.motion
 
         x,y,w,h = self.moseg.bbox
-        self.backprojection = np.zeros_like(gray,dtype=self.coseg.backprojection.dtype)
-        cv2.normalize(self.coseg.backprojection[y:y+h,x:x+w],self.backprojection,0,1,cv2.NORM_MINMAX)
+        self.backprojection = np.zeros_like(self.coseg.backprojection)
+        self.backprojection[y:y+h,x:x+w] = self.coseg.backprojection[y:y+h,x:x+w] \
+                                           / self.coseg.backprojection[y:y+h,x:x+w].max()
 
         self.backprojection[y:y+h,x:x+w] *= self.alpha
         self.backprojection[y:y+h,x:x+w] += (1-self.alpha)*self.motion[y:y+h,x:x+w]

@@ -74,7 +74,7 @@ class ConvexityHandDetector(Processor):
                 # kpinfo = "(%.2f)" % (angle*180/np.pi)
                 # cv2.putText(dispimg,kpinfo,tuple(pt),cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,0))
 
-                if self.angle_threshold[0] <= angle < self.angle_threshold[1]:
+                if self.angle_threshold[0] < angle < self.angle_threshold[1]:
                     dpoints.append(pt)
 
             if len(dpoints) > len(max_dpoints):
