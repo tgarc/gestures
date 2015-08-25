@@ -43,7 +43,7 @@ class ConvexityHandDetector(Processor):
         detected = False
         self.hull = self.dpoints = self.contour = np.array([])
 
-        contours,hierarchy = cv2.findContours(bimg.view(np.uint8),cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = cv2.findContours(bimg.view(np.uint8),cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[1]
 
         if len(contours) == 0:
             return detected
