@@ -19,25 +19,30 @@ class CrCbMeanShiftTracker(Processor):
         super(self.__class__, self).__init__(self.track,**model_params)
 
         self.bbox = None
-        self.hist = np.zeros(self.nbins,dtype=int)
+        self.hist = np.zeros(self.nbins,dtype=np.float32)
         self.backprojection = None
 
     def track(self,img,mask=None):
-        self.backprojection = cv2.calcBackProject([img],self.chans,self.hist,self.ranges,1)
+        self.backprojection = cv2.calcBackProject([img],self.chans,self.hist,self.ranges,1/self.hist.max())
+
         if mask is not None: 
-            self.backprojection *= mask # this is way faster than x[~mask] = 0
+            self.backprojection *= mask
 
         niter, self.bbox = cv2.meanShift(self.backprojection,self.bbox,self.term_criteria)
 
         return self.bbox
 
-    def init(self,img,bbox,mask=None):
+    def init(self,img,bbox,mask=None,update=False):
         self.bbox = tuple(bbox)
         x,y,w,h = self.bbox
         roi = img[y:y+h,x:x+w]
 
         if mask is not None:
-            mask = mask[y:y+h,x:x+w]
+            mask = mask[y:y+h,x:x+w].view(np.uint8)
 
-        self.hist = cv2.calcHist([roi], self.chans, mask, self.nbins, self.ranges)
-        cv2.normalize(self.hist, self.hist, 0, 255, cv2.NORM_MINMAX)
+        # bug in opencv doesn't allow assignment to a preallocated histogram in
+        # the general case; this is a workaround for that
+        if update:
+            self.hist += cv2.calcHist([roi], self.chans, mask, self.nbins, self.ranges)
+        else:
+            self.hist = cv2.calcHist([roi], self.chans, mask, self.nbins, self.ranges)

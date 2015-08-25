@@ -15,7 +15,7 @@ scale, samplesize = params['scale'], params['samplesize']
 
 # global constants
 WAIT_PERIOD = 5
-
+VAL_PERIOD = 1
 MINWAYPTS = 10
 
 class StateMachineBase(object):
@@ -92,38 +92,52 @@ class HandGestureRecognizer(StateMachineBase):
 
     def Search(self,img):
         mask = self.segmenter.segment(img)
-        if self.detector(mask):
-            bbox,com = findBBoxCoM_contour(self.detector.contour)
+        if not self.detector(mask):
+            return
 
-            # use the hand contour to draw out a more precise mask of the crcb
-            # image
-            mask = np.zeros_like(mask)
-            cv2.drawContours(mask.view(np.uint8),[self.detector.contour],0,1,thickness=-1)
-            colorimg = self.segmenter.coseg.converted_image * mask.reshape(mask.shape+(1,))
+        bbox,com = findBBoxCoM_contour(self.detector.contour)
 
-            self.tracker.init(colorimg,bbox)
-            self.waypts = [com]
-            self.tracker.backprojection = mask # this is a dirty little trick >:)
+        # use the hand contour to draw out a more precise mask of the crcb
+        # image
+        mask = np.zeros_like(mask)
+        cv2.drawContours(mask.view(np.uint8),[self.detector.contour],0,1,thickness=-1)
 
+        self.tracker.init(self.segmenter.coseg.converted_image,bbox,mask=mask,update=True)
+        self.waypts = [com]
+        self.tracker.backprojection = mask # this is a dirty little trick >:)
+
+        self.counter = (self.counter+1) % VAL_PERIOD
+        if self.counter == 0:
             return self.Track
+            
 
     def Track(self,img):
         mask = self.segmenter.segment(img)
 
-        # probably needs some error checking here in case tracking fails
-        if np.sum(mask) > 500:
-            x,y,w,h = self.tracker.track(self.segmenter.coseg.converted_image,mask=mask)
-            bbox,(xc,yc) = findBBoxCoM(self.tracker.backprojection)
-            self.waypts.append((int(xc),int(yc)))
-        else:
-            if len(self.waypts) > MINWAYPTS and self.callback is not None:
-                # Find best gesture match
-                x,y = zip(*[(self.imshape[1]-x,self.imshape[0]-y) for x,y in self.waypts])
-                matches = dollar.query(x,y,scale,samplesize,self.template_ds)
-                score,theta,clsid = matches[0]
+        if self.segmenter.moseg.bbox is not None:
+            x,y,w,h = self.segmenter.moseg.bbox
+            mask.fill(0)
+            mask[y:y+h,x:x+w] = True
 
-                if score > self.match_threshold:
-                    ds = self.template_ds[clsid][0]
-                    self.callback((x,y),(ds['x'],ds['y']),score,theta,clsid)
-            self.waypts = []
-            return self.Wait
+            x,y,w,h = self.tracker.track(self.segmenter.coseg.converted_image,mask)
+
+            # it's possible that there is still motion but that tracking failed
+            # so make sure backprojection is not all zeros
+            if self.tracker.backprojection.any():
+                bbox,(xc,yc) = findBBoxCoM(self.tracker.backprojection)
+                self.waypts.append((int(xc),int(yc)))
+                return # success! keep tracking...
+
+        # if we got to this point then tracking has failed
+        if len(self.waypts) > MINWAYPTS and self.callback is not None:
+            # Find best gesture match
+            x,y = zip(*[(self.imshape[1]-x,self.imshape[0]-y) for x,y in self.waypts])
+            matches = dollar.query(x,y,scale,samplesize,self.template_ds)
+            score,theta,clsid = matches[0]
+
+            if score > self.match_threshold:
+                ds = self.template_ds[clsid][0]
+                self.callback((x,y),(ds['x'],ds['y']),score,theta,clsid)
+
+        self.waypts = []
+        return self.Wait

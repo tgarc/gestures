@@ -52,6 +52,8 @@ hrsm = HandGestureRecognizer(prevg,currg,config.get('gesture_templates'),gesture
 for curr in imap(blur,cap):
     dispimg = curr.copy()
 
+    laststate = hrsm.state
+
     # Trigger state machine processing
     hrsm.tick(curr)
 

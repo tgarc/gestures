@@ -55,12 +55,13 @@ class MotionSegmenter(Processor):
         # TODO replace boolean indexing with boolean multiply where possible
         # Updating threshold depends on current background model
         # so always update this before updating background
-        T[~moving] = self.alpha*T[~moving] \
-                          + (1-self.alpha)*5*cv2.absdiff(nxt,bkgnd)[~moving]
+        notmoving = ~moving
+        T[notmoving] = self.alpha*T[notmoving] \
+                          + (1-self.alpha)*5*cv2.absdiff(nxt,bkgnd)[notmoving]
         # T[moving] = T[moving]
         T[T<self.T0] = self.T0
 
-        bkgnd[~moving] = self.alpha*bkgnd[~moving] + (1-self.alpha)*nxt[~moving]
+        bkgnd[notmoving] = self.alpha*bkgnd[notmoving] + (1-self.alpha)*nxt[notmoving]
         bkgnd[moving] = nxt[moving]
 
         self._buff = (cur,nxt)

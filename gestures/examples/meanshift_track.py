@@ -67,7 +67,7 @@ try:
 
         get_imdisp(app.axes['raw']).set_data(curr[:,:,::-1])
         if mstrk.backprojection is not None:
-            get_imdisp(app.axes['backprojection']).set_data(mstrk.backprojection)
+            get_imdisp(app.axes['backprojection']).set_data(mstrk.backprojection*255)
         app.draw()
 
         plt.pause(1e-6)

@@ -17,7 +17,7 @@ model_parameters = {
         'nbins' : [16,16],
         'chans' : [1,2],
         'term_criteria' : ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 ),
-        'ranges' : [0, 256, 0, 256],
+        'ranges' : [0, 256, 0, 256,],
     },
 
     'GaussianSkinSegmenter' : {
