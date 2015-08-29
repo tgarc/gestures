@@ -36,6 +36,7 @@ class SkinMotionSegmenter(Processor):
         self.skin = self.coseg.segment(img)
 
         if self.moseg.bbox is None:
+            self.backprojection = np.zeros_like(self.motion,dtype=float)
             return self.motion
 
         x,y,w,h = self.moseg.bbox
