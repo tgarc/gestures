@@ -18,11 +18,11 @@ class AsyncAnimation(Animation):
     results of drawing from the first item in the frames sequence will be
     used. This function will be called once before the first frame.
 
-    *timer* A timer event source. By default this is a timer with an *interval*
-    millisecond timeout. This option is given to permit sharing timers between
-    animation objects for syncing animations.
+    *event_source* Default event source to trigger polling. By default this is a
+    timer with an *interval* millisecond timeout. This option is given to permit
+    sharing timers between animation objects for syncing animations.
     """
-    def __init__(self,fig,init_func=None,timer=None,interval=1):
+    def __init__(self,fig,init_func=None,event_source=None,interval=10):
         self._data = deque()
         self._lag = 0
         self._drawn = False
@@ -31,10 +31,10 @@ class AsyncAnimation(Animation):
         self._interval = interval
         self._init_func = init_func
 
-        if timer is None:
-            timer = fig.canvas.new_timer(interval=self._interval)
+        if event_source is None:
+            event_source = fig.canvas.new_timer(interval=self._interval)
 
-        Animation.__init__(self,fig,event_source=timer,blit=True)
+        Animation.__init__(self,fig,event_source=event_source,blit=True)
 
     def new_frame_seq(self):
         return itertools.count()
@@ -69,7 +69,6 @@ class AsyncAnimation(Animation):
         self._drawn_artists = artists
     
 
-from gestures.core.framebuffer import FrameBuffer
 import signal
 class App(AsyncAnimation):
     def __init__(self,*args,**kwargs):
@@ -83,6 +82,7 @@ class App(AsyncAnimation):
     def __nonzero__(self):
         return self.event_source is not None
 
+from gestures.core.framebuffer import FrameBuffer
 class VideoApp(App):
     def __init__(self,fig,cap=None,**kwargs):
         self._cap = cap
