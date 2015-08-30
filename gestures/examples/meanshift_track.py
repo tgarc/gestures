@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from gestures.core.framebuffer import FrameBuffer
+from gestures.utils.framebuffer import FrameBuffer
 from gestures.utils.gui import VideoApp
 from gestures.tracking import CrCbMeanShiftTracker
 import cv2

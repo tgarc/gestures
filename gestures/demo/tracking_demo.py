@@ -5,7 +5,7 @@ import numpy as np
 from gestures.demo.hrsm import HandGestureRecognizer
 from gestures.demo.gui import DemoGUI
 from gestures.gesture_classification import dollar
-from gestures.core.framebuffer import FrameBuffer
+from gestures.utils.framebuffer import FrameBuffer
 from itertools import imap
 
 from gestures import config

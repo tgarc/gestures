@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import cv2
 import numpy as np
-from gestures.core.framebuffer import FrameBuffer
+from gestures.utils.framebuffer import FrameBuffer
 from gestures.segmentation import MotionSegmenter
 from itertools import imap
 from gestures.utils.gui import VideoApp

@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from gestures.core.framebuffer import FrameBuffer,ImageBuffer
+from gestures.utils.framebuffer import FrameBuffer,ImageBuffer
 from gestures.segmentation import GaussianSkinSegmenter
 from gestures.utils.gui import VideoApp
 import cv2

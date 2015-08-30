@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from gestures.core.framebuffer import FrameBuffer
+from gestures.utils.framebuffer import FrameBuffer
 from gestures.core.common import findBBoxCoM
 from gestures.segmentation import SkinMotionSegmenter
 from gestures.utils.gui import VideoApp

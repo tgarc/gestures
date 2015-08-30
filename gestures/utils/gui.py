@@ -82,7 +82,7 @@ class App(AsyncAnimation):
     def __nonzero__(self):
         return self.event_source is not None
 
-from gestures.core.framebuffer import FrameBuffer
+from gestures.utils.framebuffer import FrameBuffer
 class VideoApp(App):
     def __init__(self,fig,cap=None,**kwargs):
         self._cap = cap
