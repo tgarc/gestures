@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
-from abc import ABCMeta, abstractmethod
+from itertools import imap,chain
+from glob import glob
+from sys import argv
+
 
 try:
     from cv2 import (CAP_PROP_POS_FRAMES,CAP_PROP_FRAME_COUNT)
@@ -8,11 +11,47 @@ except ImportError: # v < 3.0
     from cv2.cv import (CV_CAP_PROP_POS_FRAMES as CAP_PROP_POS_FRAMES
                         , CV_CAP_PROP_FRAME_COUNT as CAP_PROP_FRAME_COUNT)
 
-class FrameBufferBase(object):
-    __metaclass__ = ABCMeta
 
-    @abstractmethod
-    def read(self):
+# video/image factory class
+class FrameBuffer(object):
+    def __new__(cls,src,stop=None,start=None,**kwargs):
+        if start is not None: start, stop = stop, start
+
+        if hasattr(src,'__iter__'):
+            buff = ImageBuffer
+        elif isinstance(src,basestring):
+            buff = VideoBuffer
+        else:
+            buff = VideoBuffer
+
+        return super(FrameBuffer,cls).__new__(buff,src,stop=stop,start=start,**kwargs)
+
+    @classmethod
+    def from_argv(cls,stop=None,start=None,**kwargs):
+        '''
+        Convenience method for parsing command line args
+
+        Usage:
+
+        for video
+        <framebuffer-program>.py <device_num> OR <file_name>
+
+        for images
+        <framebuffer-program>.py <widlcard_expression> [<widlcard_expression> ...]
+        '''
+        if len(argv)>1:
+            try:
+                src = int(argv[1])
+            except ValueError:
+                src = list(chain.from_iterable(imap(glob,argv[1:])))
+                if len(src) == 1:
+                    src = src[0]
+        else:
+            src = -1
+
+        return cls(src,stop=stop,start=start,**kwargs)
+
+    def _read(self):
         """
         Returns the next image in the feed.
 
@@ -20,11 +59,18 @@ class FrameBufferBase(object):
         """
         raise NotImplementedError
 
-    @abstractmethod
+    def read(self):
+        if self._closed:
+            raise ValueError("I/O operation on closed frame buffer")
+
+        try:
+            return self._read()
+        except StopIteration:
+            return np.array([],dtype=np.void)            
+
     def close(self):
         raise NotImplementedError
 
-    @abstractmethod
     def seek(self,offset):
         """
         If possible with the current stream, move to new frame index.
@@ -35,12 +81,13 @@ class FrameBufferBase(object):
         return self
 
     def next(self):
-        img = self.read()
-        if img.size: return img
-        raise StopIteration
+        frm = self.read()
+        if frm.size == 0: 
+            raise StopIteration
+        return frm
 
 
-class VideoBuffer(FrameBufferBase):
+class VideoBuffer(FrameBuffer):
     """
     Wrapper for the opencv video capture interface
     """
@@ -48,16 +95,17 @@ class VideoBuffer(FrameBufferBase):
     def __init__(self,src,start=None,stop=None,**kwargs):
         self.start = start
         self.stop = stop
+        self._closed = False
 
-        self.__buff = cv2.VideoCapture(src,**kwargs)
+        self._reader = cv2.VideoCapture(src)
 
         if isinstance(src,basestring):
             if self.start is None:
-                self.start = int(self.__buff.get(CAP_PROP_POS_FRAMES))
+                self.start = int(self._reader.get(CAP_PROP_POS_FRAMES))
             if self.stop is None:
-                self.stop = int(self.__buff.get(CAP_PROP_FRAME_COUNT)
-                                +self.__buff.get(CAP_PROP_POS_FRAMES))
-            self.__buff.set(CAP_PROP_POS_FRAMES, self.start)
+                self.stop = int(self._reader.get(CAP_PROP_FRAME_COUNT)
+                                +self._reader.get(CAP_PROP_POS_FRAMES))
+            self._reader.set(CAP_PROP_POS_FRAMES, self.start)
             self.live = False
         else:
             self.start = 0
@@ -65,143 +113,73 @@ class VideoBuffer(FrameBufferBase):
             self.live = True
         self._idx = self.start
 
-        self._shape = self.__buff.read()[1].shape
+        self.set = self._reader.set
+        self.get = self._reader.get
+
+        self._shape = self._reader.read()[1].shape
         self.seek()
 
     def seek(self,frame_index=None):
-        if not self.live:
-            self._idx = frame_index if frame_index is not None else self.start
-            self.__buff.set(CAP_PROP_POS_FRAMES, self.start)
+        if self.live: 
+            return
 
-    def read(self):
+        self._idx = frame_index
+        if frame_index is None:
+            self._idx = self.start
+
+        self._reader.set(CAP_PROP_POS_FRAMES, self.start)
+
+    def _read(self):
         if self._idx == self.stop:
-            return np.array([],dtype=np.void)
+            raise StopIteration
 
-        valid, img = self.__buff.read()
-        if valid:
-            self._idx += 1
-            return img
+        valid, img = self._reader.read()
+        if not valid:
+            raise IOError("Unable to read from frame buffer")
 
-        return np.array([],dtype=np.void)
+        self._idx += 1
+        return img
 
     def __repr__(self):
-        return "%r (range=%r,shape=%r)" % (self.__buff,(self.start,self.stop),self._shape)
+        return "%r (range=%r,shape=%r)" % (self._reader,(self.start,self.stop),self._shape)
 
     def close(self):
-        self.__buff.release()
+        self._reader.release()
+        self._closed = True
 
 
-class ImageBuffer(FrameBufferBase):
+class ImageBuffer(FrameBuffer):
     """
     Wrapper that uses the opencv imread function to implement a stream of images
     """
 
     def __init__(self,src,start=None,stop=None,**kwargs):
-        self.start = start
-        self.stop = stop
-        self.kwargs = dict(**kwargs)
+        self.kwargs = kwargs
 
-        self.__buff = list(src)
-        if self.stop is None: self.stop = len(self.__buff)
-        if self.start is None: self.start = 0
-        self._idx = self.start
+        self._buffer = src if hasattr(src,'__getslice__') else list(src)
 
-    def seek(self,frame_index=None):
-        self._idx = frame_index if frame_index is not None else self.start
-
-    def read(self):
-        if self._idx == self.stop:
-            return np.array([],dtype=np.void)
-
-        img = cv2.imread(self.__buff[self._idx],**self.kwargs)
-        self._idx += 1
-        return img
-
-    def close(self):
-        self.__buff = []
-
-        
-class FrameBuffer(object):
-    """
-    FrameBuffer(src[,start], stop, **kwargs)
-
-    Class for handling images, video files, and cameras generically through
-    opencv
-
-    Parameters
-    ----------
-    stop : int or None
-        Starting frame index (not supported when using an iterable source)
-    start : int or None
-        Stopping frame index (not supported when using an iterable source)
-    src : string, array_like
-        Either a single path to a video file or an iterable of paths to
-        image files
-    """
-
-    def __init__(self,src,stop=None,start=None,**kwargs):
-        if start is not None: start, stop = stop, start
-
-        if hasattr(src,'__iter__'):
-            buff = ImageBuffer
-        elif isinstance(src,basestring):
-            buff = VideoBuffer
+        if stop is not None: 
+            self._buffer = self._buffer[:stop]
+        if start is not None:
+            self.offset = start
+            self._buffer = self._buffer[start:]
         else:
-            buff = VideoBuffer
-        self.__cap = buff(src,start,stop,**kwargs)
-        self.source = self.__cap
+            self.offset = 0
+
+        self.seek()
         self._closed = False
-        self.read = self.__cap.read
-
-    @classmethod
-    def from_argv(cls,stop=None,start=None,**kwargs):
-        '''
-        Convenience method for parsing command line args
-
-        Usage:
-
-        for video
-        <framebuffer-program>.py <device_num> or <file_name>
-
-        for images
-        <framebuffer-program>.py <widlcard_expression>...
-        '''
-        from glob import glob
-        from itertools import chain,imap
-        from sys import argv
-
-        if len(argv)>2:
-            src = chain.from_iterable(imap(glob,argv[1:]))
-        elif len(argv)>1:
-            try:
-                src = int(argv[1])
-            except ValueError:
-                src = argv[1]
-        else:
-            src = -1
-
-        return cls(src,stop=stop,start=start,**kwargs)
-
-    def __iter__(self):
-        return self.__cap
-
-    # allow user to indirectly access underlying capture object's attributes
-    def __getattr__(self,attr):
-        return getattr(self.__cap, attr)
-
-    def __repr__(self):
-        return self.__cap.__repr__()
-
-    def __str__(self):
-        return self.__cap.__str__()
         
-    def __enter__(self):
-        return self
+    def seek(self,frame_index=None):
+        if frame_index is not None:
+            offset = frame_index - self.offset
+        else:
+            offset = 0
+        self._reader = imap(lambda x: cv2.imread(x,**self.kwargs), iter(self._buffer[offset:]))
 
-    def __exit__(self):
-        self.__cap.close()
+    def _read(self):
+        return next(self._reader)
 
     def close(self):
-        if not self._closed: self.__cap.close()
+        self._buffer = []
+        self._reader = None
         self._closed = True
-        self.source = None

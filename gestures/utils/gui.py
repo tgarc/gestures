@@ -44,7 +44,7 @@ class AsyncAnimation(Animation):
             self._drawn_artists = self._init_func()
 
     def update_artists(self,*artists):
-        assert(self.event_source is not None)
+        if self.event_source is None: return
 
         if len(self._data) == self._lag > 1: 
             warnings.warn("Artists queue is behind by %d" % len(self._data))

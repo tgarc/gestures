@@ -7,7 +7,6 @@ from gestures.utils.framebuffer import FrameBuffer
 from gestures.utils.gui import VideoApp
 from gestures.hand_detection import ConvexityHandDetector
 from gestures.segmentation import GaussianSkinSegmenter
-from itertools import imap
 
 
 blur = lambda x: cv2.blur(x,(9,9),borderType=cv2.BORDER_REFLECT)
@@ -27,8 +26,10 @@ fig.tight_layout()
 hdetect = ConvexityHandDetector()
 smseg = GaussianSkinSegmenter()
 app = VideoApp(fig,cap)
+
 fig.show()
-for curr in imap(blur,cap):
+while app:
+    curr = blur(cap.read())
     dispimg = curr.copy()
     mask = smseg(curr)
 

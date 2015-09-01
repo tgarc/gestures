@@ -7,7 +7,7 @@ from gestures.utils.framebuffer import FrameBuffer
 from gestures.core.common import findBBoxCoM
 from gestures.segmentation import SkinMotionSegmenter
 from gestures.utils.gui import VideoApp
-from itertools import imap
+
 
 get_imdisp = lambda ax: ax.get_images()[0]
 blur = lambda x: cv2.blur(x,(9,9),borderType=cv2.BORDER_REFLECT)
@@ -33,7 +33,8 @@ smseg = SkinMotionSegmenter(prevg,currg)
 
 app = VideoApp(fig,cap)
 fig.show()
-for curr in imap(blur,cap):
+while app:
+    curr = blur(cap.read())
     mask = smseg(curr)
     dispimg = curr.copy()
 

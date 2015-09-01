@@ -6,7 +6,6 @@ from gestures.utils.framebuffer import FrameBuffer,ImageBuffer
 from gestures.segmentation import GaussianSkinSegmenter
 from gestures.utils.gui import VideoApp
 import cv2
-from itertools import imap
 
 get_imdisp = lambda ax: ax.get_images()[0]
 blur = lambda x: cv2.blur(x,(9,9),borderType=cv2.BORDER_REFLECT)
@@ -24,8 +23,10 @@ fig.tight_layout()
 
 app = VideoApp(fig,cap)
 coseg = GaussianSkinSegmenter()
+
 fig.show()
-for curr in imap(blur,cap):
+while app:
+    curr = blur(cap.read())
     skin = coseg(curr)
 
     dispimg = curr.copy()

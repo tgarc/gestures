@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 from gestures.utils.framebuffer import FrameBuffer
 from gestures.segmentation import MotionSegmenter
-from itertools import imap
 from gestures.utils.gui import VideoApp
 
 import matplotlib as mpl
@@ -30,7 +29,8 @@ app = VideoApp(fig,cap=cap)
 moseg = MotionSegmenter(prevg,currg,dict(alpha=0.1))
 
 fig.show()
-for curr in imap(blur,cap):
+while app:
+    curr = blur(cap.read())
     moving = moseg(cv2.cvtColor(curr,cv2.COLOR_BGR2GRAY))
     dispimg = curr
 

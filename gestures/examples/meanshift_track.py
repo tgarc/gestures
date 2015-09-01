@@ -6,7 +6,7 @@ from gestures.utils.framebuffer import FrameBuffer
 from gestures.utils.gui import VideoApp
 from gestures.tracking import CrCbMeanShiftTracker
 import cv2
-from itertools import imap
+
 
 get_imdisp = lambda ax: ax.get_images()[0]
 blur = lambda x: cv2.blur(x,(7,7),borderType=cv2.BORDER_REFLECT,dst=x)
@@ -55,8 +55,10 @@ class MeanShiftApp(VideoApp):
 
 mstrk = CrCbMeanShiftTracker()
 app = MeanShiftApp(lambda bbox: mstrk.init(curr,bbox))
+
 app.show()
-for curr in imap(blur,app.cap):
+while app:
+    curr = blur(app.cap.read())
     artists = []
     if not app.SELECTING and app.bbox is not None:
         bbox = mstrk.track(curr)
